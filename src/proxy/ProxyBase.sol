@@ -6,9 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 abstract contract ProxyBase is Ownable {
     address delegate;
 
-    constructor() {
-        _transferOwnership(msg.sender);
-    }
+    constructor() Ownable(msg.sender) {}
 
     function upgradeDelegate(address newDelegateAddress) public virtual;
 

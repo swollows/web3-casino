@@ -4,26 +4,28 @@ pragma solidity ^0.8.10;
 import "./GameBase.sol";
 
 /**
- * @title Roulette Game
- * @dev Roulette Game Contract
+ * @title Coin Toss Game
+ * @dev Coin Toss Game Contract
  * @author Jonathan
  * Game Rules
  * 1. When game starts, player must bets least 100 JCT and max 2000 JCT
  *   (If player bets less than 100 JCT or more than 2000 JCT or has any balances of JCT, the bet will be cancelled)
  *   (And player cant bet only once, if player bets again, the bet will be cancelled)
- * 2. Player bets with number between 0 and 36
+ * 2. Player bets with isHead or isTail (isHead is true, isTail is false)
  * 3. When bet is finished, game will be started
- * 4. In drawing state, game will be drawed with random number between 0 and 36
- * 5. If player's bet is correct, player will be rewarded with 4x of bet
+ * 4. In drawing state, game will be drawed with coin toss result
+ * 5. If player's bet is correct, player will be rewarded with 2x of bet
  * 6. When game is finished, player can claim their reward
  */
 
-contract RouletteGame is GameBase {
-    mapping(address => uint8) public playerNumber;
+contract CoinTossGame is GameBase {
+    mapping(address => bool) public coinTossPlayer;
+
+    GameType public constant GAME_TYPE = GameType.CoinToss;
 
     /**
-     * @notice Roulette Game Contract Constructor
-     * @param _JCTToken JCT token address
+     * @notice Coin Toss Game Contract Constructor
+     * @param _JCTToken JCT Token Address
      */
     constructor(address _JCTToken) {
         JCTToken = JonathanCasinoToken(_JCTToken);
@@ -31,7 +33,7 @@ contract RouletteGame is GameBase {
     }
 
     /**
-     * @notice Roulette Game Start
+     * @notice CoinToss Game Start
      * @dev Before starting the game, check if the player is not started/ended and has no reward
      */
     function startGame() public override whenNotPaused checkInvalidAddress statusTransition {
@@ -40,64 +42,62 @@ contract RouletteGame is GameBase {
     }
 
     /**
-     * @notice Roulette Game Bet
+     * @notice CoinToss Game Bet
      * @param amount Betting amount
-     * @param number Betting number
+     * @param isHead Prediction information of CoinToss Game
      */
-    function placeBet(uint256 amount, uint8 number) public whenNotPaused checkInvalidAddress statusTransition {
+    function placeBet(uint256 amount, bool isHead) public whenNotPaused checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Betting, "You must in betting state");
         require(amount >= MIN_BET && amount <= MAX_BET, "Invalid bet amount");
-        require(playerBets[msg.sender] == 0 && playerNumber[msg.sender] == 0, "You should bet only once");
-        require(number >= 0 && number <= 36, "Invalid bet number");
+        require(playerBets[msg.sender] == 0, "You should bet only once");
+        require(playerBets[msg.sender] == 0, "You should bet only once");
 
         playerBets[msg.sender] += amount;
-        playerNumber[msg.sender] = number;
+        coinTossPlayer[msg.sender] = isHead;
     }
 
     /**
-     * @notice Roulette Game Draw
+     * @notice CoinToss Game Draw
      * @dev Before drawing, check if the player is in drawing state and has bet
+     * @dev If the bet fails, the bet amount will be 0
      */
     function draw() public whenNotPaused checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Drawing, "You must in drawing state");
         require(playerBets[msg.sender] > 0, "You should bet first");
 
-        if (playerNumber[msg.sender] != drawNumber()) {
+        if (coinTossPlayer[msg.sender] != coinToss()) {
             playerBets[msg.sender] = 0;
         }
     }
 
     /**
-     * @notice Roulette Game Draw
-     * @dev Draw the result of Roulette Game (Internal function)
+     * @notice CoinToss Game Draw
+     * @dev Draw the result of CoinToss Game (Internal function)
      */
-    function drawNumber() internal view returns (uint8) {
-        return uint8((block.prevrandao + block.timestamp + block.number) % 37);
+    function coinToss() internal view returns (bool) {
+        return (block.prevrandao + block.timestamp + block.number) % 2 != 0;
     }
 
     /**
-     * @notice Roulette Game Process Rewards
+     * @notice CoinToss Game Process Rewards
      * @dev Before processing the reward, check if the player is in drawing state and has bet
      */
     function processRewards() public override whenNotPaused checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Drawing, "You must in drawing state");
         require(playerBets[msg.sender] > 0, "You should bet first");
 
-        playerRewards[msg.sender] = playerBets[msg.sender] * 4;
+        playerRewards[msg.sender] = playerBets[msg.sender] * 2;
         playerBets[msg.sender] = 0;
     }
 
     /**
-     * @notice Roulette Game Claim Rewards
+     * @notice CoinToss Game Claim Rewards
      * @dev Before claiming the reward, check if the player is in claiming state
      */
     function claimRewards() public override whenNotPaused checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Claiming, "You must in claiming state");
 
         JCTToken.transfer(msg.sender, playerRewards[msg.sender]);
-        
-        delete playerRewards[msg.sender];
-        delete playerBets[msg.sender];
-        delete playerNumber[msg.sender];
+        playerRewards[msg.sender] = 0;
     }
 }

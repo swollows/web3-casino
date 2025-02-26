@@ -8,6 +8,9 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 abstract contract GameBase is Pausable {
     JonathanCasinoToken JCTToken;
 
+    error InvalidPlayerAddress(address player);
+
+    enum GameType { CoinToss, Roulette, Blackjack }
     enum GameState { Ended, Betting, Drawing, Rewarding, Claiming }
 
     uint256 public constant MIN_BET = 100;          // Minimum betting amount

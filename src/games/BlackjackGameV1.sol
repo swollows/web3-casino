@@ -35,6 +35,7 @@ import "./GameBase.sol";
  */
 
 contract BlackjackGame is GameBase{
+    // Blackjack Player/Dealer Status
     enum BJStatus {
         Draw,
         DrawEnd,
@@ -46,22 +47,37 @@ contract BlackjackGame is GameBase{
         Lose
     }
 
-    mapping(address => uint8[]) public playerCards;
-    mapping(address => uint8[]) public dealerCards;
-    mapping(address => BJStatus) public playerBJStatus;
-    mapping(address => BJStatus) public dealerBJStatus;
-    mapping(address => uint8[2]) public cardSum;
+    GameType public constant GAME_TYPE = GameType.Blackjack;
 
+    mapping(address => uint8[]) public playerCards; // Player's cards
+    mapping(address => uint8[]) public dealerCards; // Dealer's cards
+    mapping(address => BJStatus) public playerBJStatus; // Player's status
+    mapping(address => BJStatus) public dealerBJStatus; // Dealer's status
+    mapping(address => uint8[2]) public cardSum; // Card sum : [player, dealer]
+
+    /**
+     * @notice Blackjack Game Contract Constructor
+     * @param _JCTToken JCT Token Address
+     */
     constructor(address _JCTToken) {
         JCTToken = JonathanCasinoToken(_JCTToken);
         _unpause();
     }
 
+    /**
+     * @notice Start Blackjack Game
+     * @dev Before starting the game, check if the player is not started/ended and has no reward
+     */
     function startGame() public override whenNotPaused checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Ended, "Player is not started/ended");
         require(playerRewards[msg.sender] == 0, "You should claim your reward before starting a new game");
     }
 
+    /**
+     * @notice Place Bet
+     * @param amount Betting amount
+     * @dev Before placing the bet, check if the player is in betting state and the bet amount is valid
+     */
     function placeBet(uint256 amount) public whenNotPaused checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Betting, "You must in betting state");
         require(amount >= MIN_BET && amount <= MAX_BET, "Invalid bet amount");
@@ -70,25 +86,32 @@ contract BlackjackGame is GameBase{
         playerBets[msg.sender] += amount;
     }
 
-    function draw() public whenNotPaused checkInvalidAddress returns (uint8[][] memory) {
+    /**
+     * @notice Draw Cards
+     * @dev Before drawing the cards, check if the player is in drawing state and the bet amount is valid
+     * @return playerCards Player's cards
+     * @return dealerCards Dealer's cards
+     */
+    function draw() public whenNotPaused checkInvalidAddress returns (uint8[] memory, uint8[] memory) {
         require(playerGameState[msg.sender] == GameState.Drawing, "You must in drawing state");
         require(playerBets[msg.sender] > 0, "You should bet first");
 
         // When both player and dealer draw first card
-        if (playerBJStatus[msg.sender] == PlayerBJStatus.Draw && dealerBJStatus[msg.sender] == DealerBJStatus.Draw) {
+        if (playerBJStatus[msg.sender] == BJStatus.Draw && dealerBJStatus[msg.sender] == BJStatus.Draw) {
             for (uint8 i = 0; i < 2; i++) {
                 playerCards[msg.sender].push(drawCard());
             }
 
             dealerCards[msg.sender].push(drawCard());
 
-            playerBJStatus[msg.sender] = PlayerBJStatus.DrawEnd;
-            dealerBJStatus[msg.sender] = DealerBJStatus.DrawEnd;
+            // Set player and dealer's status to draw end
+            playerBJStatus[msg.sender] = BJStatus.DrawEnd;
+            dealerBJStatus[msg.sender] = BJStatus.DrawEnd;
         }
         // When player draw card
-        else if (playerBJStatus[msg.sender] == PlayerBJStatus.Hit && dealerBJStatus[msg.sender] == DealerBJStatus.DrawEnd) {
+        else if (playerBJStatus[msg.sender] == BJStatus.Hit && dealerBJStatus[msg.sender] == BJStatus.DrawEnd) {
             playerCards[msg.sender].push(drawCard());
-        } else if (playerBJStatus[msg.sender] == PlayerBJStatus.Stand && dealerBJStatus[msg.sender] == DealerBJStatus.DrawEnd) {
+        } else if (playerBJStatus[msg.sender] == BJStatus.Stand && dealerBJStatus[msg.sender] == BJStatus.DrawEnd) {
             dealerDraw(msg.sender);
         }
 
@@ -121,29 +144,43 @@ contract BlackjackGame is GameBase{
             playerGameState[msg.sender] = GameState.Rewarding;
             playerBJStatus[msg.sender] = BJStatus.Win;
             dealerBJStatus[msg.sender] = BJStatus.Lose;
-        } else if (checkCardSum(playerCards[msg.sender]) < checkCardSum(dealerCards[msg.sender])) {
+        }
+        // When player's card sum is lower than dealer's
+        else if (checkCardSum(playerCards[msg.sender]) < checkCardSum(dealerCards[msg.sender])) {
             playerGameState[msg.sender] = GameState.Rewarding;
             playerBJStatus[msg.sender] = BJStatus.Lose;
             dealerBJStatus[msg.sender] = BJStatus.Win;
         }
 
-        return [playerCards[msg.sender], dealerCards[msg.sender]];
+        // Return player's and dealer's cards
+        return (playerCards[msg.sender], dealerCards[msg.sender]);
     }
 
-    function hitOrStand(bool isHit) public whenNotPaused checkInvalidAddress {
+    /**
+     * @notice Hit or Stand
+     * @param isHit Whether to hit (true) or stand (false)
+     * @dev Before hitting or standing, check if the player is in drawing state and the player has drawn first
+     * @return always true (sign of execution success)
+     */
+    function hitOrStand(bool isHit) public whenNotPaused checkInvalidAddress returns (bool){
         require(playerGameState[msg.sender] == GameState.Drawing, "You must in drawing state");
-        require(playerBJStatus[msg.sender] == PlayerBJStatus.DrawEnd, "You must draw first");
+        require(playerBJStatus[msg.sender] == BJStatus.DrawEnd || playerBJStatus[msg.sender] == BJStatus.Hit, "You must draw first");
 
         if (isHit) {
-            playerBJStatus[msg.sender] = PlayerBJStatus.Hit;
-            draw();
+            playerBJStatus[msg.sender] = BJStatus.Hit;
         } else {
-            playerBJStatus[msg.sender] = PlayerBJStatus.Stand;
-            draw();
+            playerBJStatus[msg.sender] = BJStatus.Stand;
         }
+
+        return true;
     }
 
-    function checkCardSum(uint8[] memory cards) internal view returns (uint8) {
+    /**
+     * @notice Check Card Sum
+     * @param cards Cards to check
+     * @return sum Sum of the cards
+     */
+    function checkCardSum(uint8[] memory cards) internal pure returns (uint8) {
         uint8 sum = 0;
 
         for (uint8 i = 0; i < cards.length; i++) {
@@ -161,10 +198,26 @@ contract BlackjackGame is GameBase{
         return sum;
     }
 
+    /**
+     * @notice Draw Card
+     * @return uint8 number - Card drawn
+     */
     function drawCard() internal view returns (uint8) {
-        return uint8((block.prevrandao + block.timestamp + block.number) % 13);
+        uint256 randomNumber = uint256(
+            keccak256(
+                abi.encodePacked(
+                    keccak256(abi.encodePacked(block.prevrandao, block.timestamp, block.number))
+                )
+            )
+        );
+        
+        return uint8(randomNumber % 13);
     }
 
+    /**
+     * @notice Dealer Draw
+     * @param player Address of the player
+     */
     function dealerDraw(address player) internal {
         while (true) {
             if (dealerBJStatus[player] == BJStatus.DrawEnd && cardSum[player][1] < 16) {
@@ -177,10 +230,15 @@ contract BlackjackGame is GameBase{
         }
     }
 
+    /**
+     * @notice Process Rewards
+     * @dev Before processing the rewards, check if the player is in drawing state and the player has bet
+     */
     function processRewards() public override whenNotPaused checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Drawing, "You must in drawing state");
         require(playerBets[msg.sender] > 0, "You should bet first");
 
+        // Process rewards based on the player's status
         if (playerBJStatus[msg.sender] == BJStatus.Blackjack) {
             playerRewards[msg.sender] = playerBets[msg.sender] * 3;
         } else if (playerBJStatus[msg.sender] == BJStatus.Busted || playerBJStatus[msg.sender] == BJStatus.Lose) {
@@ -192,11 +250,17 @@ contract BlackjackGame is GameBase{
         }
     }
 
+    /**
+     * @notice Claim Rewards
+     * @dev Before claiming the rewards, check if the player is in claiming state
+     */
     function claimRewards() public override whenNotPaused checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Claiming, "You must in claiming state");
 
+        // Transfer token rewards to the player
         JCTToken.transfer(msg.sender, playerRewards[msg.sender]);
         
+        // Reset player's cards, dealer's cards, player's status, dealer's status, and card sum
         delete playerCards[msg.sender];
         delete dealerCards[msg.sender];
         delete playerBJStatus[msg.sender];
