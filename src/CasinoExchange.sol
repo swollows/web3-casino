@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "./tokens/CasinoToken.sol";
+import "./CasinoToken.sol";
 
 // 카지노 이용자간 토큰 교환 컨트랙트
 contract CasinoExchange {

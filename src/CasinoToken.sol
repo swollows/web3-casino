@@ -14,7 +14,7 @@ contract CasinoToken is ERC20, ERC20Permit, ERC20Pausable, ERC20Burnable, Ownabl
         Ownable(initialOwner)
         ERC20Permit("Jonathan's Casino Token")
     {
-        _mint(recipient, 10000000000 * 10 ** decimals());
+        _mint(recipient, 10000000000);
     }
 
         function pause() public onlyOwner {
