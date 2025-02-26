@@ -9,23 +9,38 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract CasinoInvestment is Ownable {
     JonathanCasinoToken public JCTToken;
 
+    bytes4 constant DEPOSIT_INVEST_TO_PLAYER_SELECTOR = bytes4(keccak256("depositInvestToPlayer(uint256,address)"));
+
+    struct InvestCall {
+        address target;
+        bytes callData;
+    }
+
     struct Investments {
+        uint256 id;
         string title;
         address creator;
         uint256 amount;
         uint256 endTime;
     }
 
+    event CallExecuted(address indexed target, bool success, bytes data);
+
     Investments[] public investStack;
 
     mapping(address => Investments[]) public playerInvestList;
 
-    constructor(address _JCTToken) Ownable(msg.sender) {
+    constructor(address _JCTToken, address _owner) Ownable(_owner) {
         JCTToken = JonathanCasinoToken(_JCTToken);
     }
     
     function createInvest(string memory _title, uint256 _amount) public {
+        require(_amount > 0, "Amount must be greater than 0");
+        require(investStack.length < 100, "Investment limit reached");
+        require(JCTToken.balanceOf(msg.sender) >= _amount, "Insufficient balance");
+
         investStack.push(Investments({
+            id: investStack.length + 1,
             title: _title,
             creator: msg.sender,
             amount: _amount,
@@ -33,11 +48,39 @@ contract CasinoInvestment is Ownable {
         }));
     }
 
-    function getInvestsList() public view returns (Investments[] memory) {
+    function depositInvestToPlayer(uint256 _id, address _player) public {
+        require(investStack.length > 0, "No investments available");
+        
+        uint256 investAmount = 0;
+
+        for (uint256 i = 0; i < investStack.length; i++) {
+            if (investStack[i].id == _id) {
+                investAmount = investStack[i].amount;
+            }
+        }
+
+        require(investAmount > 0, "Investment not found");
+
+        JCTToken.transferFrom(msg.sender, _player, investAmount);
+    }
+
+    function getInvestsListInfo() public view returns (Investments[] memory) {
         return investStack;
     }
 
     function getPlayerInvestList(address _player) public view returns (Investments[] memory) {
         return playerInvestList[_player];
+    }
+
+    function multiCall(InvestCall[] memory _calls) external {
+        for (uint256 i = 0; i < _calls.length; i++) {
+            (bool success, bytes memory data) = _calls[i].target.call(_calls[i].callData);
+
+            // Emit an event with the result of the call
+            emit CallExecuted(_calls[i].target, success, data);
+
+            // If the call failed, revert the transaction
+            require(success, "Call failed");
+        }
     }
 }
