@@ -9,12 +9,12 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @custom:security-contact jonathan@upside.center
 contract JonathanCasinoToken is ERC20, ERC20Permit, ERC20Pausable, ERC20Burnable, Ownable {
-    constructor(address initialOwner, address recipient) 
+    constructor()
         ERC20("Jonathan's Casino Token", "JCT")
-        Ownable(initialOwner)
+        Ownable(msg.sender)
         ERC20Permit("Jonathan's Casino Token")
     {
-        _mint(recipient, 10000000000);
+        _mint(address(this), 10000000000);
     }
 
         function pause() public onlyOwner {

@@ -29,33 +29,28 @@ import "./GameBase.sol";
  *
  * Card Rules
  * 1. Maximum allowed card sum is 21
- * 2. If card sum is 21 and count of cards is 2, it is called "Blackjack" and player will be rewarded with 2.5x of bet
+ * 2. If card sum is 21 and count of cards is 2, it is called "Blackjack" and player will be rewarded with 3x of bet
       (If dealer has blackjack, player will lose the bet)
  * 3. If card sum is over 21, it is called "Bust" and player will lose the bet
  */
 
 contract BlackjackGame is GameBase{
-    enum PlayerBJStatus {
+    enum BJStatus {
         Draw,
         DrawEnd,
         Hit,
         Stand,
-        Blackjack
-    }
-
-    enum DealerBJStatus {
-        Draw,
-        DrawEnd,
-        Hit,
-        Stand,
-        Blackjack
+        Blackjack,
+        Busted,
+        Win,
+        Lose
     }
 
     mapping(address => uint8[]) public playerCards;
     mapping(address => uint8[]) public dealerCards;
-    mapping(address => PlayerBJStatus) public playerBJStatus;
-    mapping(address => DealerBJStatus) public dealerBJStatus;
-    mapping(address => uint8[2][]) public bothCards;
+    mapping(address => BJStatus) public playerBJStatus;
+    mapping(address => BJStatus) public dealerBJStatus;
+    mapping(address => uint8[2]) public cardSum;
 
     constructor(address _JCTToken) {
         JCTToken = JonathanCasinoToken(_JCTToken);
@@ -79,25 +74,60 @@ contract BlackjackGame is GameBase{
         require(playerGameState[msg.sender] == GameState.Drawing, "You must in drawing state");
         require(playerBets[msg.sender] > 0, "You should bet first");
 
+        // When both player and dealer draw first card
         if (playerBJStatus[msg.sender] == PlayerBJStatus.Draw && dealerBJStatus[msg.sender] == DealerBJStatus.Draw) {
-            for (uint8 i = 0; i < 2; i++)
+            for (uint8 i = 0; i < 2; i++) {
                 playerCards[msg.sender].push(drawCard());
+            }
+
             dealerCards[msg.sender].push(drawCard());
 
             playerBJStatus[msg.sender] = PlayerBJStatus.DrawEnd;
             dealerBJStatus[msg.sender] = DealerBJStatus.DrawEnd;
-        } else if (playerBJStatus[msg.sender] == PlayerBJStatus.Hit && dealerBJStatus[msg.sender] == DealerBJStatus.DrawEnd) {
+        }
+        // When player draw card
+        else if (playerBJStatus[msg.sender] == PlayerBJStatus.Hit && dealerBJStatus[msg.sender] == DealerBJStatus.DrawEnd) {
             playerCards[msg.sender].push(drawCard());
-        } else if (playerBJStatus[msg.sender] == PlayerBJStatus.Stand && (dealerBJStatus[msg.sender] == DealerBJStatus.DrawEnd || dealerBJStatus[msg.sender] == DealerBJStatus.Stand)) {
-            dealerCards[msg.sender].push(drawCard());
+        } else if (playerBJStatus[msg.sender] == PlayerBJStatus.Stand && dealerBJStatus[msg.sender] == DealerBJStatus.DrawEnd) {
+            dealerDraw(msg.sender);
         }
 
-        if 
+        // When player has blackjack
+        if (playerCards[msg.sender].length == 2 && checkCardSum(playerCards[msg.sender]) == 21) {
+            playerGameState[msg.sender] = GameState.Rewarding;
+            playerBJStatus[msg.sender] = BJStatus.Blackjack;
+            dealerBJStatus[msg.sender] = BJStatus.Lose;
+        }
+        // When dealer has blackjack
+        else if(dealerCards[msg.sender].length == 2 && checkCardSum(dealerCards[msg.sender]) == 21) {
+            playerGameState[msg.sender] = GameState.Rewarding;
+            playerBJStatus[msg.sender] = BJStatus.Lose;
+            dealerBJStatus[msg.sender] = BJStatus.Blackjack;
+        }
+        // When player busted
+        else if (checkCardSum(playerCards[msg.sender]) > 21) {
+            playerGameState[msg.sender] = GameState.Rewarding;
+            playerBJStatus[msg.sender] = BJStatus.Busted;
+            dealerBJStatus[msg.sender] = BJStatus.Win;
+        }
+        // When player and dealer have same card sum
+        else if (checkCardSum(playerCards[msg.sender]) == checkCardSum(dealerCards[msg.sender])) {
+            playerGameState[msg.sender] = GameState.Rewarding;
+            playerBJStatus[msg.sender] = BJStatus.Draw;
+            dealerBJStatus[msg.sender] = BJStatus.Draw;
+        }
+        // When player's card sum is higher than dealer's
+        else if (checkCardSum(playerCards[msg.sender]) > checkCardSum(dealerCards[msg.sender])) {
+            playerGameState[msg.sender] = GameState.Rewarding;
+            playerBJStatus[msg.sender] = BJStatus.Win;
+            dealerBJStatus[msg.sender] = BJStatus.Lose;
+        } else if (checkCardSum(playerCards[msg.sender]) < checkCardSum(dealerCards[msg.sender])) {
+            playerGameState[msg.sender] = GameState.Rewarding;
+            playerBJStatus[msg.sender] = BJStatus.Lose;
+            dealerBJStatus[msg.sender] = BJStatus.Win;
+        }
 
-        bothCards[msg.sender][0] = playerCards[msg.sender];
-        bothCards[msg.sender][1] = dealerCards[msg.sender];
-
-        return bothCards[msg.sender];
+        return [playerCards[msg.sender], dealerCards[msg.sender]];
     }
 
     function hitOrStand(bool isHit) public whenNotPaused checkInvalidAddress {
@@ -122,11 +152,12 @@ contract BlackjackGame is GameBase{
             } else if (cards[i] == 0 && sum + 11 <= 21) {
                 sum += 11;
             } else if (cards[i] == 0) {
-                
+                sum += 1;
             } else {
                 sum += cards[i] + 1;
             }
         }
+
         return sum;
     }
 
@@ -134,19 +165,42 @@ contract BlackjackGame is GameBase{
         return uint8((block.prevrandao + block.timestamp + block.number) % 13);
     }
 
+    function dealerDraw(address player) internal {
+        while (true) {
+            if (dealerBJStatus[player] == BJStatus.DrawEnd && cardSum[player][1] < 16) {
+                dealerCards[player].push(drawCard());
+            }
+            else if (dealerBJStatus[player] == BJStatus.DrawEnd && cardSum[player][1] >= 16) {
+                dealerBJStatus[player] = BJStatus.Stand;
+                break;
+            }
+        }
+    }
+
     function processRewards() public override whenNotPaused checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Drawing, "You must in drawing state");
         require(playerBets[msg.sender] > 0, "You should bet first");
 
-        // 블랙잭 게임 로직 구현 : 게임 내용이 복잡해서 나중에 진행
-        playerRewards[msg.sender] = playerBets[msg.sender] * 2;
-        playerBets[msg.sender] = 0;
+        if (playerBJStatus[msg.sender] == BJStatus.Blackjack) {
+            playerRewards[msg.sender] = playerBets[msg.sender] * 3;
+        } else if (playerBJStatus[msg.sender] == BJStatus.Busted || playerBJStatus[msg.sender] == BJStatus.Lose) {
+            playerRewards[msg.sender] = 0;
+        } else if (playerBJStatus[msg.sender] == BJStatus.Win) {
+            playerRewards[msg.sender] = playerBets[msg.sender] * 2;
+        } else if (playerBJStatus[msg.sender] == BJStatus.Draw) {
+            playerRewards[msg.sender] = playerBets[msg.sender];
+        }
     }
 
     function claimRewards() public override whenNotPaused checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Claiming, "You must in claiming state");
 
         JCTToken.transfer(msg.sender, playerRewards[msg.sender]);
-        playerRewards[msg.sender] = 0;
+        
+        delete playerCards[msg.sender];
+        delete dealerCards[msg.sender];
+        delete playerBJStatus[msg.sender];
+        delete dealerBJStatus[msg.sender];
+        delete cardSum[msg.sender];
     }
 }
