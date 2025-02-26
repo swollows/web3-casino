@@ -12,7 +12,7 @@ abstract contract ProxyBase is Ownable {
 
     function upgradeDelegate(address newDelegateAddress) public virtual;
 
-    fallback() external payable {
+    fallback() external payable onlyOwner {
         assembly {
             let _target := sload(0)
             calldatacopy(0x0, 0x0, calldatasize())

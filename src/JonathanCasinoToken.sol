@@ -8,7 +8,7 @@ import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20P
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @custom:security-contact jonathan@upside.center
-contract CasinoToken is ERC20, ERC20Permit, ERC20Pausable, ERC20Burnable, Ownable {
+contract JonathanCasinoToken is ERC20, ERC20Permit, ERC20Pausable, ERC20Burnable, Ownable {
     constructor(address initialOwner, address recipient) 
         ERC20("Jonathan's Casino Token", "JCT")
         Ownable(initialOwner)

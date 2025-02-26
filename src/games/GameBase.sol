@@ -1,16 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
+import "../JonathanCasinoToken.sol";
+
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
 abstract contract GameBase is Pausable {
-    error InvalidPlayerAddress(address player);
+    JonathanCasinoToken JCTToken;
 
     enum GameState { Ended, Betting, Drawing, Rewarding, Claiming }
 
-    uint256 public constant MIN_BET = 100;          // 최소 배팅 금액
-    uint256 public constant MAX_BET = 2000;         // 최대 배팅 금액
+    uint256 public constant MIN_BET = 100;          // Minimum betting amount
+    uint256 public constant MAX_BET = 2000;         // Maximum betting amount
 
+    // Check if the player address is valid
     modifier checkInvalidAddress() {
         if (msg.sender == address(0)) {
             revert InvalidPlayerAddress(msg.sender);
@@ -18,6 +21,7 @@ abstract contract GameBase is Pausable {
         _;
     }
 
+    // Transition the game state when each function is finished
     modifier statusTransition() {
         _;
         if (playerGameState[msg.sender] == GameState.Claiming) {
@@ -27,12 +31,18 @@ abstract contract GameBase is Pausable {
         }
     }
 
+    // Mapping of player addresses to their betting amounts
     mapping(address => uint256) public playerBets;
+    // Mapping of player addresses to their rewards
     mapping(address => uint256) public playerRewards;
+    // Mapping of player addresses to their game states
     mapping(address => GameState) public playerGameState;
 
+    // Start the game
     function startGame() public virtual;
-    function placeBet(uint256 amount) public virtual;
+    // placeBet() and draw() must be customed by developers
+    // Process the rewards
     function processRewards() public virtual;
+    // Claim the rewards
     function claimRewards() public virtual;
 }
