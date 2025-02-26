@@ -1,0 +1,121 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.10;
+
+import "./GameBase.sol";
+
+/**
+ * @title Roulette Game
+ * @dev Roulette Game Contract
+ * @author Jonathan
+ * Game Rules
+ * 1. When game starts, player must bets least 100 JCT and max 2000 JCT
+ *   (If player bets less than 100 JCT or more than 2000 JCT or has any balances of JCT, the bet will be cancelled)
+ *   (And player cant bet only once, if player bets again, the bet will be cancelled)
+ * 2. Player bets with number between 0 and 36
+ * 3. When bet is finished, game will be started
+ * 4. In drawing state, game will be drawed with random number between 0 and 36
+ * 5. If player's bet is correct, player will be rewarded with 4x of bet
+ * 6. When game is finished, player can claim their reward
+ */
+
+contract RouletteGame is GameBase {
+    GameType public constant GAME_TYPE = GameType.Roulette;
+
+    mapping(address => uint8) public playerNumber;
+    mapping(address => uint8) public drawNumber;
+
+    /**
+     * @notice Roulette Game Contract Constructor
+     * @param _JCTToken JCT token address
+     * @param _casinoCounter Casino counter address
+     * @param _owner Owner address
+     */
+    constructor(address _JCTToken, address _casinoCounter, address _owner) {
+        JCTToken = JonathanCasinoToken(_JCTToken);
+        casinoCounter = CasinoCounter(_casinoCounter);
+        transferOwnership(_owner);
+        _unpause();
+    }
+
+    /**
+     * @notice Roulette Game Start
+     * @dev Before starting the game, check if the player is not started/ended and has no reward
+     */
+    function startGame() public override whenNotPaused checkInvalidAddress statusTransition {
+        require(playerGameState[msg.sender] == GameState.Ended, "Player is not started/ended");
+        require(playerRewards[msg.sender] == 0, "You should claim your reward before starting a new game");
+
+        casinoCounter.addTotalPlays(msg.sender, GAME_TYPE);
+    }
+
+    /**
+     * @notice Roulette Game Bet
+     * @param amount Betting amount
+     * @param number Betting number
+     */
+    function placeBet(uint256 amount, uint8 number) public whenNotPaused checkInvalidAddress statusTransition {
+        require(playerGameState[msg.sender] == GameState.Betting, "You must in betting state");
+        require(amount >= MIN_BET && amount <= MAX_BET, "Invalid bet amount");
+        require(playerBets[msg.sender] == 0 && playerNumber[msg.sender] == 0, "You should bet only once");
+        require(number >= 0 && number <= 36, "Invalid bet number");
+
+        casinoCounter.addTotalBets(msg.sender, GAME_TYPE, amount);
+
+        playerBets[msg.sender] += amount;
+        playerNumber[msg.sender] = number;
+    }
+
+    /**
+     * @notice Roulette Game Draw
+     * @dev Before drawing, check if the player is in drawing state and has bet
+     */
+    function draw() public whenNotPaused checkInvalidAddress statusTransition {
+        require(playerGameState[msg.sender] == GameState.Drawing, "You must in drawing state");
+        require(playerBets[msg.sender] > 0, "You should bet first");
+
+        drawNumber[msg.sender] = drawNumber();
+    }
+
+    /**
+     * @notice Roulette Game Draw
+     * @dev Draw the result of Roulette Game (Internal function)
+     */
+    function drawNumber() internal view returns (uint8) {
+        return uint8((block.prevrandao + block.timestamp + block.number) % 37);
+    }
+
+    /**
+     * @notice Roulette Game Process Rewards
+     * @dev Before processing the reward, check if the player is in drawing state and has bet
+     */
+    function processRewards() public override whenNotPaused checkInvalidAddress statusTransition {
+        require(playerGameState[msg.sender] == GameState.Drawing, "You must in drawing state");
+        require(playerBets[msg.sender] > 0, "You should bet first");
+
+        if (playerNumber[msg.sender] == drawNumber[msg.sender]) {
+            playerRewards[msg.sender] = playerBets[msg.sender] * 5;
+            casinoCounter.addTotalWins(msg.sender, GAME_TYPE);
+        } else {
+            playerRewards[msg.sender] = 0;
+            casinoCounter.addTotalLosses(msg.sender, GAME_TYPE);
+        }
+
+        playerBets[msg.sender] = 0;
+    }
+
+    /**
+     * @notice Roulette Game Claim Rewards
+     * @dev Before claiming the reward, check if the player is in claiming state
+     */
+    function claimRewards() public override whenNotPaused checkInvalidAddress statusTransition {
+        require(playerGameState[msg.sender] == GameState.Claiming, "You must in claiming state");
+
+        JCTToken.transfer(msg.sender, playerRewards[msg.sender]);
+
+        casinoCounter.addTotalRewards(msg.sender, GAME_TYPE);
+
+        delete playerRewards[msg.sender];
+        delete playerBets[msg.sender];
+        delete playerNumber[msg.sender];
+    }
+}
