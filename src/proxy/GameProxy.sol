@@ -4,8 +4,8 @@ pragma solidity ^0.8.10;
 import "./ProxyBase.sol";
 
 contract BlackjackProxy is ProxyBase {
-    constructor(address _impl, address _casinoCounter, address _jctToken)
-     ProxyBase(_impl, _casinoCounter, _jctToken)
+    constructor(address _casinoCounter, address _JCTToken)
+     ProxyBase(_casinoCounter, _JCTToken)
      {}
 
     function upgradeDelegate(address newDelegateAddress) public override onlyOwner {
@@ -15,9 +15,9 @@ contract BlackjackProxy is ProxyBase {
 }
 
 contract CoinTossProxy is ProxyBase {
-    constructor(address _impl, address _casinoCounter, address _jctToken)
-     ProxyBase(_impl, _casinoCounter, _jctToken) 
-    {}
+    constructor(address _casinoCounter, address _JCTToken)
+     ProxyBase(_casinoCounter, _JCTToken)
+     {}
 
     function upgradeDelegate(address newDelegateAddress) public override onlyOwner {
         require(msg.sender == owner(), "Only owner can upgrade CoinToss contract");
@@ -26,8 +26,8 @@ contract CoinTossProxy is ProxyBase {
 }
 
 contract RouletteProxy is ProxyBase {
-    constructor(address _impl, address _casinoCounter, address _jctToken)
-     ProxyBase(_impl, _casinoCounter, _jctToken) 
+    constructor(address _casinoCounter, address _JCTToken)
+     ProxyBase(_casinoCounter, _JCTToken)
      {}
 
     function upgradeDelegate(address newDelegateAddress) public override onlyOwner {

@@ -29,11 +29,6 @@ abstract contract GameBase is Pausable {
     // Mapping of player addresses to their game states
     mapping(address => GameState) public playerGameState;
 
-    constructor(address _proxy) {
-        owner = _proxy;
-    }
-
-
     // Check if the player address is valid
     modifier checkInvalidAddress() {
         if (msg.sender == address(0)) {
@@ -62,10 +57,10 @@ abstract contract GameBase is Pausable {
         _;
     }
 
-    function initialize(address _JCTToken, address _casinoCounter, address _owner) public onlyOwner{
+    function initialize(address _JCTToken, address _casinoCounter) public onlyOwner{
         JCTToken = JonathanCasinoToken(_JCTToken);
         casinoCounter = CasinoCounter(_casinoCounter);
-        owner = _owner;
+        owner = msg.sender;
         initialized = true;
     }
 
@@ -76,4 +71,12 @@ abstract contract GameBase is Pausable {
     function processRewards() public virtual;
     // Claim the rewards
     function claimRewards() public virtual;
+
+    function gameOn() public onlyOwner {
+        initialized = false;
+    }
+
+    function gameOff() public onlyOwner {
+        initialized = true;
+    }
 }

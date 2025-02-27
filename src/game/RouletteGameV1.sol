@@ -24,15 +24,9 @@ contract RouletteGame is GameBase {
     mapping(address => uint8) public playerNumber;
     mapping(address => uint8) public rouletteResult;
 
-    /**
-     * @notice Roulette Game Contract Constructor
-     * @param _JCTToken JCT token address
-     * @param _casinoCounter Casino counter address
-     * @param _owner Owner address
-     */
-    constructor(address payable _JCTToken, address _casinoCounter, address _owner)
-        GameBase(_JCTToken, _casinoCounter, _owner)
-    {}
+    constructor() {
+        owner = msg.sender;
+    }
 
     /**
      * @notice Roulette Game Start

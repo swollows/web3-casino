@@ -24,6 +24,10 @@ contract CoinTossGame is GameBase {
 
     GameType public constant GAME_TYPE = GameType.CoinToss;
 
+    constructor() {
+        owner = msg.sender;
+    }
+
     /**
      * @notice CoinToss Game Start
      * @dev Before starting the game, check if the player is not started/ended and has no reward
