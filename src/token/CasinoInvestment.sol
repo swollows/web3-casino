@@ -30,7 +30,7 @@ contract CasinoInvestment is Ownable {
 
     mapping(address => Investments[]) public playerInvestList;
 
-    constructor(address _JCTToken, address _owner) Ownable(_owner) {
+    constructor(address payable _JCTToken, address _owner) Ownable(_owner) {
         JCTToken = JonathanCasinoToken(_JCTToken);
     }
     
@@ -48,20 +48,10 @@ contract CasinoInvestment is Ownable {
         }));
     }
 
-    function depositInvestToPlayer(uint256 _id, address _player) public {
-        require(investStack.length > 0, "No investments available");
-        
-        uint256 investAmount = 0;
+    function depositInvestToPlayer(Investments memory _investment) public {
+        require(_investment.id > 0, "Investment not found");
 
-        for (uint256 i = 0; i < investStack.length; i++) {
-            if (investStack[i].id == _id) {
-                investAmount = investStack[i].amount;
-            }
-        }
-
-        require(investAmount > 0, "Investment not found");
-
-        JCTToken.transferFrom(msg.sender, _player, investAmount);
+        JCTToken.transferFrom(_investment.creator, msg.sender, _investment.amount);
     }
 
     function getInvestsListInfo() public view returns (Investments[] memory) {
