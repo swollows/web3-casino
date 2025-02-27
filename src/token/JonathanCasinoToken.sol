@@ -3,80 +3,102 @@ pragma solidity ^0.8.10;
 
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ERC20Burnable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import {ERC20Pausable} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Pausable.sol";
-import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @custom:security-contact jonathan@upside.center
-contract JonathanCasinoToken is ERC20, ERC20Permit, ERC20Pausable, ERC20Burnable, Ownable {
+contract JonathanCasinoToken is ERC20, ERC20Burnable, Ownable {
     mapping(address => uint256[]) public playerInvestList;
+
+    address[] private accounts;
+    bool public isEmergency = false;
 
     constructor(address _owner) payable
         ERC20("Jonathan's Casino Token", "JCT")
         Ownable(_owner)
-        ERC20Permit("Jonathan's Casino Token")
     {
         require(msg.value == 1 ether, "You must send 1 ether to the contract");
-        _mint(address(this), msg.value / (10 ** decimals()));
+        _mint(address(this), msg.value / 10e3);
+    }
+
+    modifier stopWhenEmergency() {
+        require(!isEmergency, "Contract is paused");
+        _;
+    }
+
+    modifier onlyWhenEmergency() {
+        require(isEmergency && msg.sender == owner(), "Only owner can call this function now");
+        _;
+    }
+
+    function transfer(address _to, uint256 _amount) public override stopWhenEmergency returns (bool) {
+        require(_to != address(0), "Invalid address");
+        require(_amount > 0, "Invalid amount");
+        require(balanceOf(owner()) >= _amount, "Insufficient balance");
+
+        return super.transfer(_to, _amount);
+    }
+
+    function transferFrom(address _from, address _to, uint256 _amount) public override stopWhenEmergency returns (bool) {
+        require(_to != address(0), "Invalid address");
+        require(_amount > 0, "Invalid amount");
+        require(balanceOf(_from) >= _amount, "Insufficient balance");
+        
+        return super.transferFrom(_from, _to, _amount);
+    }
+
+    function burn(address _target, uint256 _amount) public stopWhenEmergency onlyOwner {
+        require(balanceOf(_target == owner() ? address(this) : _target) >= _amount, "Insufficient balance");
+
+        _burn(_target, _amount);
+    }
+
+    function _update(address from, address to, uint256 value)
+        internal
+        override(ERC20)
+    {
+        super._update(from, to, value);
     }
 
     function decimals() public pure override returns (uint8) {
         return 3;
     }
 
-    function mint(address to, uint256 amount) public
-    {
-        require(msg.sender == address(this), "Only the contract can mint");
-        _mint(to, amount);
+    function deposit(address _from) external payable stopWhenEmergency {
+        require(msg.value / 10e3 >= 2000 && msg.value / 10e3 <= 200000, "Invalid ETH range");
+        require(balanceOf(_from == owner() ? address(this) : _from) + (msg.value / 10e3) <= 200000, "Total token amount must be lower than 200000");
+
+        accounts.push(_from);
+
+        _mint(_from == owner() ? address(this) : _from, msg.value / 10e3);
     }
 
-    function transfer(address to, uint256 amount) public override whenNotPaused returns (bool) {
-        return super.transfer(to, amount);
+    function withdraw(uint256 _amount) public stopWhenEmergency {
+        address _from = msg.sender == owner() ? address(this) : msg.sender;
+
+        require(balanceOf(_from) >= _amount, "Insufficient balance");
+
+        _burn(_from, _amount);
+        payable(_from).transfer(_amount * 10e3);
     }
 
-    function transferFrom(address from, address to, uint256 amount) public override whenNotPaused returns (bool) {
-        return super.transferFrom(from, to, amount);
+    function balanceOf(address account) public view override returns (uint256) {
+        return super.balanceOf(account == owner() ? address(this) : account);
     }
 
-    function withdraw() external {
-        require(balanceOf(msg.sender) > 0, "You must have a balance to withdraw");
+    function enableEmergency() public onlyOwner {
+        require(!isEmergency, "Emergency is already enabled");
 
-        _burn(msg.sender, balanceOf(msg.sender));
-        payable(msg.sender).transfer(balanceOf(msg.sender) * (10 ** decimals()));
+        isEmergency = true;
     }
 
-    function getBalance() external view returns (uint256) {
-        address target;
+    function disableEmergency() public onlyOwner {
+        require(isEmergency, "Emergency is not enabled");
 
-        if (msg.sender == owner())
-            target = address(this);
-        else
-            target = msg.sender;
-        
-        return balanceOf(target);
+        isEmergency = false;
     }
 
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    function unpause() external onlyOwner {
-        _unpause();
-    }
-
-    receive() external payable whenNotPaused {
-        require(msg.value >= 2000 * (10 ** decimals()), "You must send at least 2000 * 10e3 wei to the contract");
-        require(msg.value <= 200000 * (10 ** decimals()), "You must send at most 200000 * 10e3 wei to the contract");
-        require(balanceOf(msg.sender) <= msg.value / (10 ** decimals()), "You must have enough balance to deposit");
-
-        _mint(msg.sender, msg.value / (10 ** decimals()));
-    }
-
-    // The following functions are overrides required by Solidity.
-    function _update(address from, address to, uint256 value)
-        internal
-        override(ERC20, ERC20Pausable)
-    {
-        super._update(from, to, value);
+    function emergencyWithdraw() public onlyWhenEmergency onlyOwner {
+        payable(owner()).call{value: balanceOf(address(this)) * 10e3}("");
+        _burn(address(this), balanceOf(address(this)));
     }
 }
