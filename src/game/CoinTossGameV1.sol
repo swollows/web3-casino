@@ -20,6 +20,7 @@ import "./GameBase.sol";
 
 contract CoinTossGame is GameBase {
     mapping(address => bool) public coinTossPlayer;
+    mapping(address => bool) public coinTossResult;
 
     GameType public constant GAME_TYPE = GameType.CoinToss;
 
@@ -29,12 +30,9 @@ contract CoinTossGame is GameBase {
      * @param _casinoCounter Casino Counter Address
      * @param _owner Owner Address
      */
-    constructor(address _JCTToken, address _casinoCounter, address _owner) {
-        JCTToken = JonathanCasinoToken(_JCTToken);
-        casinoCounter = CasinoCounter(_casinoCounter);
-        transferOwnership(_owner);
-        _unpause();
-    }
+    constructor(address payable _JCTToken, address _casinoCounter, address _owner)
+        GameBase(_JCTToken, _casinoCounter, _owner)
+    {}
 
     /**
      * @notice CoinToss Game Start
@@ -43,6 +41,8 @@ contract CoinTossGame is GameBase {
     function startGame() public override whenNotPaused checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Ended, "Player is not started/ended");
         require(playerRewards[msg.sender] == 0, "You should claim your reward before starting a new game");
+
+        casinoCounter.addTotalPlays(msg.sender, uint256(GAME_TYPE));
     }
 
     /**
@@ -58,6 +58,8 @@ contract CoinTossGame is GameBase {
 
         playerBets[msg.sender] += amount;
         coinTossPlayer[msg.sender] = isHead;
+
+        casinoCounter.addTotalBets(msg.sender, uint256(GAME_TYPE), amount);
     }
 
     /**
@@ -69,9 +71,7 @@ contract CoinTossGame is GameBase {
         require(playerGameState[msg.sender] == GameState.Drawing, "You must in drawing state");
         require(playerBets[msg.sender] > 0, "You should bet first");
 
-        if (coinTossPlayer[msg.sender] != coinToss()) {
-            playerBets[msg.sender] = 0;
-        }
+        coinTossResult[msg.sender] = coinToss();
     }
 
     /**
@@ -90,7 +90,14 @@ contract CoinTossGame is GameBase {
         require(playerGameState[msg.sender] == GameState.Drawing, "You must in drawing state");
         require(playerBets[msg.sender] > 0, "You should bet first");
 
-        playerRewards[msg.sender] = playerBets[msg.sender] * 2;
+        if (coinTossPlayer[msg.sender] == coinTossResult[msg.sender]) {
+            playerRewards[msg.sender] = playerBets[msg.sender] * 2;
+            casinoCounter.addTotalWins(msg.sender, uint256(GAME_TYPE));
+        } else {
+            playerRewards[msg.sender] = 0;
+            casinoCounter.addTotalLosses(msg.sender, uint256(GAME_TYPE));
+        }
+
         playerBets[msg.sender] = 0;
     }
 
@@ -102,6 +109,9 @@ contract CoinTossGame is GameBase {
         require(playerGameState[msg.sender] == GameState.Claiming, "You must in claiming state");
 
         JCTToken.transfer(msg.sender, playerRewards[msg.sender]);
+
+        casinoCounter.addTotalRewards(msg.sender, uint256(GAME_TYPE), playerRewards[msg.sender]);
+
         playerRewards[msg.sender] = 0;
     }
 }

@@ -61,12 +61,9 @@ contract BlackjackGame is GameBase{
      * @param _casinoCounter Casino Counter Address
      * @param _owner Owner Address
      */
-    constructor(address _JCTToken, address _casinoCounter, address _owner) {
-        JCTToken = JonathanCasinoToken(_JCTToken);
-        casinoCounter = CasinoCounter(_casinoCounter);
-        transferOwnership(_owner);
-        _unpause();
-    }
+    constructor(address payable _JCTToken, address _casinoCounter, address _owner)
+        GameBase(_JCTToken, _casinoCounter, _owner)
+    {}
 
     /**
      * @notice Start Blackjack Game
@@ -76,7 +73,7 @@ contract BlackjackGame is GameBase{
         require(playerGameState[msg.sender] == GameState.Ended, "Player is not started/ended");
         require(playerRewards[msg.sender] == 0, "You should claim your reward before starting a new game");
 
-        casinoCounter.addTotalPlays(msg.sender, GAME_TYPE);
+        casinoCounter.addTotalPlays(msg.sender, uint256(GAME_TYPE));
     }
 
     /**
@@ -89,9 +86,9 @@ contract BlackjackGame is GameBase{
         require(amount >= MIN_BET && amount <= MAX_BET, "Invalid bet amount");
         require(playerBets[msg.sender] == 0, "You should bet only once");
 
-        casinoCounter.addTotalBets(msg.sender, GAME_TYPE, amount);
-
         playerBets[msg.sender] += amount;
+
+        casinoCounter.addTotalBets(msg.sender, uint256(GAME_TYPE), amount);
     }
 
     /**
@@ -249,16 +246,16 @@ contract BlackjackGame is GameBase{
         // Process rewards based on the player's status
         if (playerBJStatus[msg.sender] == BJStatus.Blackjack) {
             playerRewards[msg.sender] = playerBets[msg.sender] * 3;
-            casinoCounter.addTotalWins(msg.sender, GAME_TYPE);
+            casinoCounter.addTotalWins(msg.sender, uint256(GAME_TYPE));
         } else if (playerBJStatus[msg.sender] == BJStatus.Busted || playerBJStatus[msg.sender] == BJStatus.Lose) {
             playerRewards[msg.sender] = 0;
-            casinoCounter.addTotalLosses(msg.sender, GAME_TYPE);
+            casinoCounter.addTotalLosses(msg.sender, uint256(GAME_TYPE));
         } else if (playerBJStatus[msg.sender] == BJStatus.Win) {
             playerRewards[msg.sender] = playerBets[msg.sender] * 2;
-            casinoCounter.addTotalWins(msg.sender, GAME_TYPE);
+            casinoCounter.addTotalWins(msg.sender, uint256(GAME_TYPE));
         } else if (playerBJStatus[msg.sender] == BJStatus.Draw) {
             playerRewards[msg.sender] = playerBets[msg.sender];
-            casinoCounter.addTotalDraws(msg.sender, GAME_TYPE);
+            casinoCounter.addTotalDraws(msg.sender, uint256(GAME_TYPE));
         }
     }
 
@@ -272,7 +269,7 @@ contract BlackjackGame is GameBase{
         // Transfer token rewards to the player
         JCTToken.transfer(msg.sender, playerRewards[msg.sender]);
 
-        casinoCounter.addTotalRewards(msg.sender, GAME_TYPE);
+        casinoCounter.addTotalRewards(msg.sender, uint256(GAME_TYPE), playerRewards[msg.sender]);
 
         // Reset player's cards, dealer's cards, player's status, dealer's status, and card sum
         delete playerCards[msg.sender];

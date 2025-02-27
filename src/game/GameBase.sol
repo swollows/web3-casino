@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "../JonathanCasinoToken.sol";
-import "../managers/CasinoCounter.sol";
+import "../token/JonathanCasinoToken.sol";
+import "../counter/CasinoCounter.sol";
 
 import "@openzeppelin/contracts/utils/Pausable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-abstract contract GameBase is Pausable {
+abstract contract GameBase is Pausable, Ownable {
     JonathanCasinoToken JCTToken;
 
     CasinoCounter casinoCounter;
@@ -19,10 +20,12 @@ abstract contract GameBase is Pausable {
     uint256 public constant MIN_BET = 100;          // Minimum betting amount
     uint256 public constant MAX_BET = 2000;         // Maximum betting amount
 
-    constructor(address _JCTToken, address _casinoCounter, address _owner) {
+    constructor(address payable _JCTToken, address _casinoCounter, address _owner)
+        Ownable(_owner)
+    {
         JCTToken = JonathanCasinoToken(_JCTToken);
         casinoCounter = CasinoCounter(_casinoCounter);
-        transferOwnership(_owner);
+        _unpause();
     }
 
     // Check if the player address is valid

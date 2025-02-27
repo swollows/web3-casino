@@ -14,7 +14,7 @@ import "./GameBase.sol";
  * 2. Player bets with number between 0 and 36
  * 3. When bet is finished, game will be started
  * 4. In drawing state, game will be drawed with random number between 0 and 36
- * 5. If player's bet is correct, player will be rewarded with 4x of bet
+ * 5. If player's bet is correct, player will be rewarded with 5x of bet
  * 6. When game is finished, player can claim their reward
  */
 
@@ -22,7 +22,7 @@ contract RouletteGame is GameBase {
     GameType public constant GAME_TYPE = GameType.Roulette;
 
     mapping(address => uint8) public playerNumber;
-    mapping(address => uint8) public drawNumber;
+    mapping(address => uint8) public rouletteResult;
 
     /**
      * @notice Roulette Game Contract Constructor
@@ -30,12 +30,9 @@ contract RouletteGame is GameBase {
      * @param _casinoCounter Casino counter address
      * @param _owner Owner address
      */
-    constructor(address _JCTToken, address _casinoCounter, address _owner) {
-        JCTToken = JonathanCasinoToken(_JCTToken);
-        casinoCounter = CasinoCounter(_casinoCounter);
-        transferOwnership(_owner);
-        _unpause();
-    }
+    constructor(address payable _JCTToken, address _casinoCounter, address _owner)
+        GameBase(_JCTToken, _casinoCounter, _owner)
+    {}
 
     /**
      * @notice Roulette Game Start
@@ -45,7 +42,7 @@ contract RouletteGame is GameBase {
         require(playerGameState[msg.sender] == GameState.Ended, "Player is not started/ended");
         require(playerRewards[msg.sender] == 0, "You should claim your reward before starting a new game");
 
-        casinoCounter.addTotalPlays(msg.sender, GAME_TYPE);
+        casinoCounter.addTotalPlays(msg.sender, uint256(GAME_TYPE));
     }
 
     /**
@@ -59,10 +56,10 @@ contract RouletteGame is GameBase {
         require(playerBets[msg.sender] == 0 && playerNumber[msg.sender] == 0, "You should bet only once");
         require(number >= 0 && number <= 36, "Invalid bet number");
 
-        casinoCounter.addTotalBets(msg.sender, GAME_TYPE, amount);
-
         playerBets[msg.sender] += amount;
         playerNumber[msg.sender] = number;
+
+        casinoCounter.addTotalBets(msg.sender, uint256(GAME_TYPE), amount);
     }
 
     /**
@@ -73,7 +70,7 @@ contract RouletteGame is GameBase {
         require(playerGameState[msg.sender] == GameState.Drawing, "You must in drawing state");
         require(playerBets[msg.sender] > 0, "You should bet first");
 
-        drawNumber[msg.sender] = drawNumber();
+        rouletteResult[msg.sender] = drawNumber();
     }
 
     /**
@@ -92,12 +89,12 @@ contract RouletteGame is GameBase {
         require(playerGameState[msg.sender] == GameState.Drawing, "You must in drawing state");
         require(playerBets[msg.sender] > 0, "You should bet first");
 
-        if (playerNumber[msg.sender] == drawNumber[msg.sender]) {
+        if (playerNumber[msg.sender] == rouletteResult[msg.sender]) {
             playerRewards[msg.sender] = playerBets[msg.sender] * 5;
-            casinoCounter.addTotalWins(msg.sender, GAME_TYPE);
+            casinoCounter.addTotalWins(msg.sender, uint256(GAME_TYPE));
         } else {
             playerRewards[msg.sender] = 0;
-            casinoCounter.addTotalLosses(msg.sender, GAME_TYPE);
+            casinoCounter.addTotalLosses(msg.sender, uint256(GAME_TYPE));
         }
 
         playerBets[msg.sender] = 0;
@@ -112,7 +109,7 @@ contract RouletteGame is GameBase {
 
         JCTToken.transfer(msg.sender, playerRewards[msg.sender]);
 
-        casinoCounter.addTotalRewards(msg.sender, GAME_TYPE);
+        casinoCounter.addTotalRewards(msg.sender, uint256(GAME_TYPE), playerRewards[msg.sender]);
 
         delete playerRewards[msg.sender];
         delete playerBets[msg.sender];
