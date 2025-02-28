@@ -45,12 +45,12 @@ contract JonathanCasinoToken is ERC20, ERC20Burnable, Ownable {
         return super.transferFrom(_from, _to, _amount);
     }
 
-    function approveFrom(address _from, address _to, uint256 _amount) public stopWhenEmergency {
-        require(_to != address(0), "Invalid address");
+    function approveFrom(address _owner, address _spender, uint256 _amount) public stopWhenEmergency {
+        require(_owner != address(0), "Invalid address");
         require(_amount > 0, "Invalid amount");
-        require(balanceOf(_from) >= _amount, "Insufficient balance");
+        require(balanceOf(_owner) >= _amount, "Insufficient balance");
 
-        _approve(_from, _to, _amount);
+        _approve(_owner, _spender, _amount);
     }
 
     function burn(address _target, uint256 _amount) public stopWhenEmergency onlyOwner {
