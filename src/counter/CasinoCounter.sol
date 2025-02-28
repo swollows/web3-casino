@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+//import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 
-contract CasinoCounter is Ownable {
+import "forge-std/Script.sol";
+
+contract CasinoCounter is AccessControl {
     enum GameType { CoinToss, Roulette, Blackjack }
 
     mapping(address => uint256[3]) public totalPlays;
@@ -13,7 +16,12 @@ contract CasinoCounter is Ownable {
     mapping(address => uint256[3]) public totalBets;
     mapping(address => uint256[3]) public totalRewards;
 
-    constructor() Ownable(msg.sender) {}
+    bytes32 public constant GAME_PROXY_ROLE = keccak256("GAME_PROXY_ROLE");
+
+    constructor(address _proxy) {
+        _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
+        _grantRole(GAME_PROXY_ROLE, _proxy);
+    }
 
     function getAllInfo(address _player) public view returns (
         uint256[3] memory plays, 
@@ -111,31 +119,31 @@ contract CasinoCounter is Ownable {
         return totalRewards[_player][_gameType];
     }
 
-    function addTotalPlays(address _player, uint256 _gameType) public onlyOwner {
+    function addTotalPlays(address _player, uint256 _gameType) public onlyRole(GAME_PROXY_ROLE) {
         totalPlays[_player][_gameType]++;
     }
 
-    function addTotalWins(address _player, uint256 _gameType) public onlyOwner {
+    function addTotalWins(address _player, uint256 _gameType) public onlyRole(GAME_PROXY_ROLE) {
         totalWins[_player][_gameType]++;
     }
 
-    function addTotalLosses(address _player, uint256 _gameType) public onlyOwner {
+    function addTotalLosses(address _player, uint256 _gameType) public onlyRole(GAME_PROXY_ROLE) {
         totalLosses[_player][_gameType]++;
     }
 
-    function addTotalDraws(address _player, uint256 _gameType) public onlyOwner {
+    function addTotalDraws(address _player, uint256 _gameType) public onlyRole(GAME_PROXY_ROLE) {
         totalDraws[_player][_gameType]++;
     }
 
-    function addTotalBets(address _player, uint256 _gameType, uint256 _amount) public onlyOwner {
+    function addTotalBets(address _player, uint256 _gameType, uint256 _amount) public onlyRole(GAME_PROXY_ROLE) {
         totalBets[_player][_gameType] += _amount;
     }
 
-    function addTotalRewards(address _player, uint256 _gameType, uint256 _amount) public onlyOwner {
+    function addTotalRewards(address _player, uint256 _gameType, uint256 _amount) public onlyRole(GAME_PROXY_ROLE) {
         totalRewards[_player][_gameType] += _amount;
     }
 
-    function removeAllInfo(address _player) public onlyOwner{
+    function removeAllInfo(address _player) public onlyRole(DEFAULT_ADMIN_ROLE) {
         delete totalPlays[_player];
         delete totalWins[_player];
         delete totalLosses[_player];
