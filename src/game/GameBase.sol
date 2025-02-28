@@ -6,10 +6,15 @@ import "../counter/CasinoCounter.sol";
 
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
-abstract contract GameBase is Pausable {
-    JonathanCasinoToken JCTToken;
+import "forge-std/console.sol";
 
+abstract contract GameBase is Pausable {
+    bool public initialized = false;
+
+    JonathanCasinoToken JCTToken;
     CasinoCounter casinoCounter;
+
+    address public owner;
 
     error InvalidPlayerAddress(address player);
 
@@ -18,9 +23,6 @@ abstract contract GameBase is Pausable {
 
     uint256 public constant MIN_BET = 100;          // Minimum betting amount
     uint256 public constant MAX_BET = 2000;         // Maximum betting amount
-
-    address public proxy;
-    bool public initialized = false;
 
     // Mapping of player addresses to their betting amounts
     mapping(address => uint256) public playerBets;
@@ -47,8 +49,10 @@ abstract contract GameBase is Pausable {
         }
     }
 
-    modifier onlyProxy() {
-        require(msg.sender == proxy, "Only proxy can call this function");
+    modifier onlyOwner() {
+        console.log("In onlyOwner owner:", owner);
+        console.log("In onlyOwner msg.sender:", msg.sender);
+        require(msg.sender == owner, "Only owner can call this function");
         _;
     }
 
@@ -57,15 +61,15 @@ abstract contract GameBase is Pausable {
         _;
     }
 
-    function initialize(address _JCTToken, address _casinoCounter) public onlyProxy {
+    function initialize(address _JCTToken, address _casinoCounter) public onlyOwner {
         require(!initialized, "Contract already initialized");
         JCTToken = JonathanCasinoToken(_JCTToken);
         casinoCounter = CasinoCounter(_casinoCounter);
         initialized = true;
     }
 
-    function getProxyAddress() public view returns (address) {
-        return proxy;
+    function getOwner() public view returns (address) {
+        return owner;
     }
 
     // Start the game
@@ -76,11 +80,11 @@ abstract contract GameBase is Pausable {
     // Claim the rewards
     function claimRewards() public virtual;
 
-    function gameOn() public onlyProxy {
+    function gameOn() public onlyOwner {
         initialized = false;
     }
 
-    function gameOff() public onlyProxy {
+    function gameOff() public onlyOwner {
         initialized = true;
     }
 }

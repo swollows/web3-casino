@@ -44,10 +44,12 @@ contract CasinoGameProxyTest is Test {
 
         coinTossProxy = new CoinTossProxy(address(casinoCounter), address(token));
 
-        coinTossGame = new CoinTossGame(address(coinTossProxy));
+        coinTossGame = new CoinTossGame(address(owner));
 
-        console.log("CoinTossGame proxy address:", coinTossGame.getProxyAddress());
+        console.log("CoinTossGame owner:", coinTossGame.getOwner());
         console.log("CoinTossProxy address:", address(coinTossProxy));
+        console.log("CoinTossGame address:", address(coinTossGame));
+        console.log("CoinTossCounter address:", address(casinoCounter));
 
         coinTossProxy.upgradeDelegate(address(coinTossGame));
 

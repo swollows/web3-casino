@@ -24,8 +24,8 @@ contract CoinTossGame is GameBase {
 
     GameType public constant GAME_TYPE = GameType.CoinToss;
 
-    constructor(address _proxy) {
-        proxy = _proxy;
+    constructor(address _owner) {
+        owner = _owner;
     }
 
     /**

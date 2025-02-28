@@ -21,7 +21,11 @@ contract CoinTossProxy is ProxyBase {
 
     function upgradeDelegate(address newDelegateAddress) public override onlyOwner {
         require(msg.sender == owner(), "Only owner can upgrade CoinToss contract");
+
+        console.log("CoinTossProxy implementation:", implementation);
         implementation = newDelegateAddress;
+
+        console.log("CoinTossProxy implementation:", implementation);
     }
 }
 

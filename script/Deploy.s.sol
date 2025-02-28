@@ -37,7 +37,7 @@ contract Deploy is Script {
 
         CoinTossGame coinTossGame = new CoinTossGame(address(coinTossProxy));
 
-        console.log("CoinTossGame proxy address:", coinTossGame.getProxyAddress());
+        console.log("CoinTossGame owner:", coinTossGame.getOwner());
 
         coinTossProxy.upgradeDelegate(address(coinTossGame));
 

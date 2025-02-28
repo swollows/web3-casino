@@ -3,6 +3,8 @@ pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+import "forge-std/Script.sol";
+
 abstract contract ProxyBase is Ownable {
     address implementation = address(0);
     address casinoCounter;
@@ -19,6 +21,8 @@ abstract contract ProxyBase is Ownable {
         require(implementation != address(0), "Implementation not set");
         require(casinoCounter != address(0), "Casino counter not set");
         require(JCTToken != address(0), "JCT token not set");
+
+        console.log("Implementation:", implementation);
 
         assembly {
             // 0x40 슬롯에 프록시 컨트랙트의 코드 크기를 저장
