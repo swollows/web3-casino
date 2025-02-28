@@ -24,8 +24,8 @@ contract CoinTossGame is GameBase {
 
     GameType public constant GAME_TYPE = GameType.CoinToss;
 
-    constructor() {
-        owner = msg.sender;
+    constructor(address _proxy) {
+        proxy = _proxy;
     }
 
     /**
@@ -47,9 +47,11 @@ contract CoinTossGame is GameBase {
     function placeBet(uint256 amount, bool isHead) public isInitialized whenNotPaused checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Betting, "You must in betting state");
         require(amount >= MIN_BET && amount <= MAX_BET, "Invalid bet amount");
-        require(playerBets[msg.sender] == 0, "You should bet only once");
+        require(JCTToken.balanceOf(msg.sender) >= amount, "Insufficient balance");
         require(playerBets[msg.sender] == 0, "You should bet only once");
 
+        JCTToken.approveFrom(msg.sender, address(JCTToken), amount);
+        JCTToken.transferFrom(msg.sender, address(JCTToken), amount);
         playerBets[msg.sender] += amount;
         coinTossPlayer[msg.sender] = isHead;
 
@@ -92,6 +94,8 @@ contract CoinTossGame is GameBase {
             casinoCounter.addTotalLosses(msg.sender, uint256(GAME_TYPE));
         }
 
+        JCTToken.approveFrom(address(JCTToken), msg.sender, playerRewards[msg.sender]);
+
         playerBets[msg.sender] = 0;
     }
 
@@ -102,7 +106,7 @@ contract CoinTossGame is GameBase {
     function claimRewards() public override isInitialized whenNotPaused checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Claiming, "You must in claiming state");
 
-        JCTToken.transfer(msg.sender, playerRewards[msg.sender]);
+        JCTToken.transferFrom(address(JCTToken), msg.sender, playerRewards[msg.sender]);
 
         casinoCounter.addTotalRewards(msg.sender, uint256(GAME_TYPE), playerRewards[msg.sender]);
 

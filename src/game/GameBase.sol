@@ -19,7 +19,7 @@ abstract contract GameBase is Pausable {
     uint256 public constant MIN_BET = 100;          // Minimum betting amount
     uint256 public constant MAX_BET = 2000;         // Maximum betting amount
 
-    address public owner;
+    address public proxy;
     bool public initialized = false;
 
     // Mapping of player addresses to their betting amounts
@@ -47,8 +47,8 @@ abstract contract GameBase is Pausable {
         }
     }
 
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Only owner can call this function");
+    modifier onlyProxy() {
+        require(msg.sender == proxy, "Only proxy can call this function");
         _;
     }
 
@@ -57,11 +57,15 @@ abstract contract GameBase is Pausable {
         _;
     }
 
-    function initialize(address _JCTToken, address _casinoCounter) public onlyOwner{
+    function initialize(address _JCTToken, address _casinoCounter) public onlyProxy {
+        require(!initialized, "Contract already initialized");
         JCTToken = JonathanCasinoToken(_JCTToken);
         casinoCounter = CasinoCounter(_casinoCounter);
-        owner = msg.sender;
         initialized = true;
+    }
+
+    function getProxyAddress() public view returns (address) {
+        return proxy;
     }
 
     // Start the game
@@ -72,11 +76,11 @@ abstract contract GameBase is Pausable {
     // Claim the rewards
     function claimRewards() public virtual;
 
-    function gameOn() public onlyOwner {
+    function gameOn() public onlyProxy {
         initialized = false;
     }
 
-    function gameOff() public onlyOwner {
+    function gameOff() public onlyProxy {
         initialized = true;
     }
 }
