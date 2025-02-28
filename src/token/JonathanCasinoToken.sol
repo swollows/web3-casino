@@ -9,7 +9,6 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 contract JonathanCasinoToken is ERC20, ERC20Burnable, Ownable {
     mapping(address => uint256[]) public playerInvestList;
 
-    address[] private accounts;
     bool public isEmergency = false;
 
     constructor(address _owner) payable
@@ -46,7 +45,7 @@ contract JonathanCasinoToken is ERC20, ERC20Burnable, Ownable {
         return super.transferFrom(_from, _to, _amount);
     }
 
-    function approveTo(address _from, address _to, uint256 _amount) public stopWhenEmergency {
+    function approveFrom(address _from, address _to, uint256 _amount) public stopWhenEmergency {
         require(_to != address(0), "Invalid address");
         require(_amount > 0, "Invalid amount");
         require(balanceOf(_from) >= _amount, "Insufficient balance");
@@ -71,13 +70,13 @@ contract JonathanCasinoToken is ERC20, ERC20Burnable, Ownable {
         return 3;
     }
 
-    function deposit(address _from) external payable stopWhenEmergency {
+    function deposit() external payable stopWhenEmergency {
+        address dest = msg.sender == owner() ? address(this) : msg.sender;
+
         require(msg.value / 10e3 >= 2000 && msg.value / 10e3 <= 200000, "Invalid ETH range");
-        require(balanceOf(_from == owner() ? address(this) : _from) + (msg.value / 10e3) <= 200000, "Total token amount must be lower than 200000");
+        require(balanceOf(dest) + (msg.value / 10e3) <= 200000, "Total token amount must be lower than 200000");
 
-        accounts.push(_from);
-
-        _mint(_from == owner() ? address(this) : _from, msg.value / 10e3);
+        _mint(dest, msg.value / 10e3);
     }
 
     function withdraw(uint256 _amount) public stopWhenEmergency {
