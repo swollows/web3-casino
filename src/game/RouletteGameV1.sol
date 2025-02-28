@@ -24,8 +24,8 @@ contract RouletteGame is GameBase {
     mapping(address => uint8) public playerNumber;
     mapping(address => uint8) public rouletteResult;
 
-    constructor(address _proxy) {
-        proxy = _proxy;
+    constructor(address _owner) {
+        owner = _owner;
     }
 
     /**
