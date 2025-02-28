@@ -42,13 +42,13 @@ contract CasinoTokenTest is Test {
     function testDeposit() public {
         console.log("Test case 1-2: Deposit");
         vm.prank(player1);
-        token.deposit{value: 200000 * 10e3}(player1);
+        token.deposit{value: 200000 * 10e3}();
         
         console.log("Token total supply: ", token.totalSupply());
         console.log("Token balance of player1:", token.balanceOf(player1));
 
         vm.prank(player2);
-        token.deposit{value: 200000 * 10e3}(player2);
+        token.deposit{value: 200000 * 10e3}();
         
         console.log("\nToken total supply: ", token.totalSupply());
         console.log("Token balance of Contract:", token.balanceOf(address(token)));
@@ -68,7 +68,7 @@ contract CasinoTokenTest is Test {
         console.log("\nTest case 1-3-1: Deposit token lower than min (2000)");
 
         vm.expectRevert("Invalid ETH range");
-        token.deposit{value: 1999 * 10e3}(player1);
+        token.deposit{value: 1999 * 10e3}();
 
         console.log("Token balance of player1:", token.balanceOf(player1));
 
@@ -77,7 +77,7 @@ contract CasinoTokenTest is Test {
         console.log("\nTest case 1-3-2: Deposit token upper than max (200000)");
         
         vm.expectRevert("Invalid ETH range");
-        token.deposit{value: 200001 * 10e3}(player1);
+        token.deposit{value: 200001 * 10e3}();
 
         console.log("Token balance of player1:", token.balanceOf(player1));
 
@@ -89,7 +89,7 @@ contract CasinoTokenTest is Test {
         
         vm.startPrank(player1);
         
-        token.deposit{value: 200000 * 10e3}(player1);
+        token.deposit{value: 200000 * 10e3}();
 
         console.log("\nBefore transfer");
         console.log("Token balance of player1:", token.balanceOf(player1));
@@ -118,7 +118,7 @@ contract CasinoTokenTest is Test {
 
         vm.startPrank(player1);
         
-        token.deposit{value: 200000 * 10e3}(player1);
+        token.deposit{value: 200000 * 10e3}();
 
         console.log("\nBefore transfer");
         console.log("Token balance of player1:", token.balanceOf(player1));
@@ -156,7 +156,7 @@ contract CasinoTokenTest is Test {
 
         vm.prank(player1);
 
-        token.deposit{value: 200000 * 10e3}(player1);
+        token.deposit{value: 200000 * 10e3}();
 
         console.log("\nBefore burn");
         console.log("Token total supply: ", token.totalSupply());
@@ -178,7 +178,7 @@ contract CasinoTokenTest is Test {
         console.log("Test case 1-7: Withdraw");
 
         vm.prank(player1);
-        token.deposit{value: 200000 * 10e3}(player1);
+        token.deposit{value: 200000 * 10e3}();
 
         console.log("\nBefore withdraw");
         console.log("Token total supply: ", token.totalSupply());
@@ -204,10 +204,10 @@ contract CasinoTokenTest is Test {
         console.log("Test case 1-8: Enable emergency");
 
         vm.prank(player1);
-        token.deposit{value: 200000 * 10e3}(player1);
+        token.deposit{value: 200000 * 10e3}();
 
         vm.prank(player2);
-        token.deposit{value: 200000 * 10e3}(player2);
+        token.deposit{value: 200000 * 10e3}();
 
         vm.startPrank(owner);
 
