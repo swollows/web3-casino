@@ -6,15 +6,13 @@ import "../counter/CasinoCounter.sol";
 
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
-import "forge-std/console.sol";
-
 abstract contract GameBase is Pausable {
-    bool public initialized = false;
-
     JonathanCasinoToken JCTToken;
     CasinoCounter casinoCounter;
 
     address public owner;
+
+    bool public initialized = false;
 
     error InvalidPlayerAddress(address player);
 
@@ -49,22 +47,17 @@ abstract contract GameBase is Pausable {
         }
     }
 
-    modifier onlyOwner() {
-        console.log("In onlyOwner owner:", owner);
-        console.log("In onlyOwner msg.sender:", msg.sender);
-        require(msg.sender == owner, "Only owner can call this function");
-        _;
-    }
-
     modifier isInitialized() {
         require(initialized, "Contract is not initialized");
+        require(owner != address(0), "Owner is not set");
         _;
     }
 
-    function initialize(address _JCTToken, address _casinoCounter) public onlyOwner {
+    function initialize(address _JCTToken, address _casinoCounter, address _owner) public {
         require(!initialized, "Contract already initialized");
         JCTToken = JonathanCasinoToken(_JCTToken);
         casinoCounter = CasinoCounter(_casinoCounter);
+        owner = _owner;
         initialized = true;
     }
 
@@ -79,12 +72,4 @@ abstract contract GameBase is Pausable {
     function processRewards() public virtual;
     // Claim the rewards
     function claimRewards() public virtual;
-
-    function gameOn() public onlyOwner {
-        initialized = false;
-    }
-
-    function gameOff() public onlyOwner {
-        initialized = true;
-    }
 }
