@@ -24,15 +24,11 @@ contract CoinTossGame is GameBase {
 
     GameType public constant GAME_TYPE = GameType.CoinToss;
 
-    constructor(address _owner) {
-        owner = _owner;
-    }
-
     /**
      * @notice CoinToss Game Start
      * @dev Before starting the game, check if the player is not started/ended and has no reward
      */
-    function startGame() public override isInitialized whenNotPaused checkInvalidAddress statusTransition {
+    function startGame() public override isInitialized checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Ended, "Player is not started/ended");
         require(playerRewards[msg.sender] == 0, "You should claim your reward before starting a new game");
 
@@ -44,14 +40,15 @@ contract CoinTossGame is GameBase {
      * @param amount Betting amount
      * @param isHead Prediction information of CoinToss Game
      */
-    function placeBet(uint256 amount, bool isHead) public isInitialized whenNotPaused checkInvalidAddress statusTransition {
+    function placeBet(uint256 amount, bool isHead) public isInitialized checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Betting, "You must in betting state");
         require(amount >= MIN_BET && amount <= MAX_BET, "Invalid bet amount");
         require(JCTToken.balanceOf(msg.sender) >= amount, "Insufficient balance");
         require(playerBets[msg.sender] == 0, "You should bet only once");
 
-        JCTToken.approveFrom(msg.sender, address(JCTToken), amount);
+        JCTToken.approveFrom(msg.sender, address(this), amount);
         JCTToken.transferFrom(msg.sender, address(JCTToken), amount);
+
         playerBets[msg.sender] += amount;
         coinTossPlayer[msg.sender] = isHead;
 
@@ -63,11 +60,17 @@ contract CoinTossGame is GameBase {
      * @dev Before drawing, check if the player is in drawing state and has bet
      * @dev If the bet fails, the bet amount will be 0
      */
-    function draw() public isInitialized whenNotPaused checkInvalidAddress statusTransition {
+    function draw() public isInitialized checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Drawing, "You must in drawing state");
         require(playerBets[msg.sender] > 0, "You should bet first");
 
         coinTossResult[msg.sender] = coinToss();
+
+        console.log("coinTossResult[msg.sender]:", coinTossResult[msg.sender]);
+        console.log("coinTossPlayer[msg.sender]:", coinTossPlayer[msg.sender]);
+        console.log("block.prevrandao:", block.prevrandao);
+        console.log("block.timestamp:", block.timestamp);
+        console.log("block.number:", block.number);
     }
 
     /**
@@ -82,8 +85,8 @@ contract CoinTossGame is GameBase {
      * @notice CoinToss Game Process Rewards
      * @dev Before processing the reward, check if the player is in drawing state and has bet
      */
-    function processRewards() public override isInitialized whenNotPaused checkInvalidAddress statusTransition {
-        require(playerGameState[msg.sender] == GameState.Drawing, "You must in drawing state");
+    function processRewards() public override isInitialized checkInvalidAddress statusTransition {
+        require(playerGameState[msg.sender] == GameState.Rewarding, "You must in Rewarding state");
         require(playerBets[msg.sender] > 0, "You should bet first");
 
         if (coinTossPlayer[msg.sender] == coinTossResult[msg.sender]) {
@@ -93,8 +96,9 @@ contract CoinTossGame is GameBase {
             playerRewards[msg.sender] = 0;
             casinoCounter.addTotalLosses(msg.sender, uint256(GAME_TYPE));
         }
-
-        JCTToken.approveFrom(address(JCTToken), msg.sender, playerRewards[msg.sender]);
+        if (playerRewards[msg.sender] > 0) {
+            JCTToken.approveFrom(address(JCTToken), address(this), playerRewards[msg.sender]);
+        }
 
         playerBets[msg.sender] = 0;
     }
@@ -103,10 +107,12 @@ contract CoinTossGame is GameBase {
      * @notice CoinToss Game Claim Rewards
      * @dev Before claiming the reward, check if the player is in claiming state
      */
-    function claimRewards() public override isInitialized whenNotPaused checkInvalidAddress statusTransition {
+    function claimRewards() public override isInitialized checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Claiming, "You must in claiming state");
 
-        JCTToken.transferFrom(address(JCTToken), msg.sender, playerRewards[msg.sender]);
+        if (playerRewards[msg.sender] > 0) {
+            JCTToken.transferFrom(address(JCTToken), msg.sender, playerRewards[msg.sender]);
+        }
 
         casinoCounter.addTotalRewards(msg.sender, uint256(GAME_TYPE), playerRewards[msg.sender]);
 
