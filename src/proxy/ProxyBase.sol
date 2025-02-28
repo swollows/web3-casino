@@ -6,23 +6,44 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "forge-std/Script.sol";
 
 abstract contract ProxyBase is Ownable {
-    address implementation = address(0);
+    bytes32 private constant IMPLEMENTATION_SLOT = bytes32(uint256(keccak256("eip1967.proxy.implementation")) - 1);
+
     address casinoCounter;
     address JCTToken;
 
-    constructor(address _casinoCounter, address _JCTToken) Ownable(msg.sender) {
+    constructor() Ownable(msg.sender) {
+    }
+
+    function setCasinoCounter(address _casinoCounter) public onlyOwner {
         casinoCounter = _casinoCounter;
+    }
+
+    function setJCTToken(address _JCTToken) public onlyOwner {
         JCTToken = _JCTToken;
     }
 
-    function upgradeDelegate(address newDelegateAddress) public virtual;
+    function setImplementation(address _impl) public onlyOwner {
+        bytes32 slot = IMPLEMENTATION_SLOT;
+        assembly {
+            sstore(slot, _impl)
+        }
+    }
+
+    function _getImplementation() private view returns (address _impl) {
+        bytes32 slot = IMPLEMENTATION_SLOT;
+        assembly {
+            _impl := sload(slot)
+        }
+    }
 
     fallback() external payable {
-        require(implementation != address(0), "Implementation not set");
         require(casinoCounter != address(0), "Casino counter not set");
         require(JCTToken != address(0), "JCT token not set");
 
-        console.log("Implementation:", implementation);
+        address _impl = _getImplementation();
+        require(_impl != address(0), "Implementation not set");
+
+        console.log("Implementation:", _impl);
 
         assembly {
             // 0x40 슬롯에 프록시 컨트랙트의 코드 크기를 저장
@@ -32,7 +53,7 @@ abstract contract ProxyBase is Ownable {
             // 컨트랙트 코드를 델리게이트 콜 하여 실행
             let result := delegatecall(
                 gas(),
-                sload(implementation.slot),
+                _impl,
                 ptr,
                 calldatasize(),
                 0,
