@@ -20,6 +20,8 @@ contract CasinoGameProxyTest is Test {
     CasinoCounter casinoCounter;
     CoinTossProxy coinTossProxy;
     CoinTossGame coinTossGame;
+
+    enum GameType { CoinToss, Roulette, Blackjack }
     
     address public owner = address(1);
     address public player1 = address(2);
@@ -40,24 +42,27 @@ contract CasinoGameProxyTest is Test {
         // 컨트랙트 배포 (배포 시 1 ether를 보내야 함)
         token = new JonathanCasinoToken{value: 1 ether}(owner);
 
-        casinoCounter = new CasinoCounter();
+        coinTossProxy = new CoinTossProxy();
 
-        coinTossProxy = new CoinTossProxy(address(casinoCounter), address(token));
+        casinoCounter = new CasinoCounter(address(coinTossProxy));
 
-        coinTossGame = new CoinTossGame(address(owner));
+        coinTossProxy.setCasinoCounter(address(casinoCounter));
+        coinTossProxy.setJCTToken(address(token));
 
-        console.log("CoinTossGame owner:", coinTossGame.getOwner());
+        coinTossGame = new CoinTossGame();
+
         console.log("CoinTossProxy address:", address(coinTossProxy));
         console.log("CoinTossGame address:", address(coinTossGame));
         console.log("CoinTossCounter address:", address(casinoCounter));
 
-        coinTossProxy.upgradeDelegate(address(coinTossGame));
+        coinTossProxy.setImplementation(address(coinTossGame));
 
-        (bool result, ) = address(coinTossProxy).call{value: 0}(abi.encodeWithSignature("initialize(address,address)", address(token), address(casinoCounter)));
+        (bool result, ) = address(coinTossProxy).call{value: 0}(abi.encodeWithSignature("initialize(address,address,address)", address(token), address(casinoCounter), address(owner)));
         require(result, "Failed to initialize");
 
         // 컨트랙트 주소 출력
         console.log("Token deployed at:", address(token));
+        console.log("CoinTossGame owner:", coinTossGame.getOwner());
 
         vm.stopPrank();
     }
@@ -99,5 +104,60 @@ contract CasinoGameProxyTest is Test {
         console.log("\nAfter game end");
         console.log("Token balance of owner:", token.balanceOf(owner));
         console.log("Token balance of player1:", token.balanceOf(player1));
+
+        console.log("\nCheck CasinoCounter (CoinToss)");
+        console.log("Total plays:", casinoCounter.totalPlays(player1, uint256(GameType.CoinToss)));
+        console.log("Total wins:", casinoCounter.totalWins(player1, uint256(GameType.CoinToss)));
+        console.log("Total losses:", casinoCounter.totalLosses(player1, uint256(GameType.CoinToss)));
+        console.log("Total draws:", casinoCounter.totalDraws(player1, uint256(GameType.CoinToss)));
+        console.log("Total bets:", casinoCounter.totalBets(player1, uint256(GameType.CoinToss)));
+        console.log("Total rewards:", casinoCounter.totalRewards(player1, uint256(GameType.CoinToss)));
+    }
+
+    function testCoinTossGameWin() public {
+        // 충전 전 토큰 잔액 확인
+        console.log("Token balance of owner:", token.balanceOf(owner));
+        console.log("Token balance of player1:", token.balanceOf(player1));
+
+        // 충전
+        vm.prank(player1);
+        token.deposit{value: 200000 * 10e3}();
+
+        // 시작 전 토큰 잔액 확인
+        console.log("\nBefore game start");
+        console.log("Token balance of owner:", token.balanceOf(owner));
+        console.log("Token balance of player1:", token.balanceOf(player1));
+
+        vm.startPrank(player1);
+
+        // 게임 시작
+        ICoinTossGame(address(coinTossProxy)).startGame();
+
+        // 베팅
+        ICoinTossGame(address(coinTossProxy)).placeBet(2000, false);
+
+        // 코인 토스 추첨
+        ICoinTossGame(address(coinTossProxy)).draw();
+
+        // 보상 수여
+        ICoinTossGame(address(coinTossProxy)).processRewards();
+
+        // 보상 획득
+        ICoinTossGame(address(coinTossProxy)).claimRewards();
+
+        vm.stopPrank();
+
+        // 종료 후 토큰 잔액 상태 확인
+        console.log("\nAfter game end");
+        console.log("Token balance of owner:", token.balanceOf(owner));
+        console.log("Token balance of player1:", token.balanceOf(player1));
+
+        console.log("\nCheck CasinoCounter (CoinToss)");
+        console.log("Total plays:", casinoCounter.totalPlays(player1, uint256(GameType.CoinToss)));
+        console.log("Total wins:", casinoCounter.totalWins(player1, uint256(GameType.CoinToss)));
+        console.log("Total losses:", casinoCounter.totalLosses(player1, uint256(GameType.CoinToss)));
+        console.log("Total draws:", casinoCounter.totalDraws(player1, uint256(GameType.CoinToss)));
+        console.log("Total bets:", casinoCounter.totalBets(player1, uint256(GameType.CoinToss)));
+        console.log("Total rewards:", casinoCounter.totalRewards(player1, uint256(GameType.CoinToss)));
     }
 }
