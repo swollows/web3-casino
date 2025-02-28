@@ -12,41 +12,39 @@ interface ICoinTossGame {
     function draw() external;
     function processRewards() external;
     function claimRewards() external;
-    function initialize(address _JCTToken, address _casinoCounter) external;
+    function initialize(address _JCTToken, address _casinoCounter, address _owner) external;
 }
 
 contract Deploy is Script {
-    address public testOwner = address(1);
-    address public deployOwner;
-
-    function run() public {
-        address _owner = testOwner;
-
-        vm.startBroadcast();
+    function run(address owner) public {
+        vm.startBroadcast(owner);
         
-        vm.startPrank(_owner);
-
-        console.log("Owner:", _owner);
-
         // 컨트랙트 배포 (배포 시 1 ether를 보내야 함)
-        JonathanCasinoToken token = new JonathanCasinoToken{value: 1 ether}(_owner);
+        JonathanCasinoToken token = new JonathanCasinoToken{value: 1 ether}(owner);
 
-        CasinoCounter casinoCounter = new CasinoCounter();
+        CoinTossProxy coinTossProxy = new CoinTossProxy();
 
-        CoinTossProxy coinTossProxy = new CoinTossProxy(address(casinoCounter), address(token));
+        CasinoCounter casinoCounter = new CasinoCounter(address(coinTossProxy));
 
-        CoinTossGame coinTossGame = new CoinTossGame(address(coinTossProxy));
+        coinTossProxy.setCasinoCounter(address(casinoCounter));
+        coinTossProxy.setJCTToken(address(token));
 
-        console.log("CoinTossGame owner:", coinTossGame.getOwner());
+        CoinTossGame coinTossGame = new CoinTossGame();
 
-        coinTossProxy.upgradeDelegate(address(coinTossGame));
+        console.log("CoinTossProxy address:", address(coinTossProxy));
+        console.log("CoinTossGame address:", address(coinTossGame));
+        console.log("CoinTossCounter address:", address(casinoCounter));
 
-        ICoinTossGame(address(coinTossProxy)).initialize(address(token), address(casinoCounter));
+        coinTossProxy.setImplementation(address(coinTossGame));
+
+        (bool result, ) = address(coinTossProxy).call{value: 0}(abi.encodeWithSignature("initialize(address,address,address)", address(token), address(casinoCounter), address(owner)));
+        require(result, "Failed to initialize");
 
         // 컨트랙트 주소 출력
         console.log("Token deployed at:", address(token));
-
-        vm.stopPrank();
+        console.log("CoinTossProxy deployed at:", address(coinTossProxy));
+        console.log("CoinTossGame deployed at:", address(coinTossGame));
+        console.log("CoinTossCounter deployed at:", address(casinoCounter));
 
         vm.stopBroadcast();
     }
