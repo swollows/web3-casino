@@ -6,6 +6,15 @@ import "../src/token/JonathanCasinoToken.sol";
 import "../src/proxy/GameProxy.sol";
 import "../src/game/CoinTossGameV1.sol";
 
+interface ICoinTossGame {
+    function startGame() external;
+    function placeBet(uint256 amount, bool isHead) external;
+    function draw() external;
+    function processRewards() external;
+    function claimRewards() external;
+    function initialize(address _JCTToken, address _casinoCounter) external;
+}
+
 contract Deploy is Script {
     address public testOwner = address(1);
     address public deployOwner;
@@ -17,6 +26,8 @@ contract Deploy is Script {
         
         vm.startPrank(_owner);
 
+        console.log("Owner:", _owner);
+
         // 컨트랙트 배포 (배포 시 1 ether를 보내야 함)
         JonathanCasinoToken token = new JonathanCasinoToken{value: 1 ether}(_owner);
 
@@ -24,14 +35,13 @@ contract Deploy is Script {
 
         CoinTossProxy coinTossProxy = new CoinTossProxy(address(casinoCounter), address(token));
 
-        CoinTossGame coinTossGame = new CoinTossGame();
+        CoinTossGame coinTossGame = new CoinTossGame(address(coinTossProxy));
+
+        console.log("CoinTossGame proxy address:", coinTossGame.getProxyAddress());
 
         coinTossProxy.upgradeDelegate(address(coinTossGame));
 
-        (bool result, ) = address(coinTossProxy).call{value: 0}("");
-        require(result, "Failed to upgrade delegate");
-
-        coinTossGame.initialize(address(token), address(casinoCounter));
+        ICoinTossGame(address(coinTossProxy)).initialize(address(token), address(casinoCounter));
 
         // 컨트랙트 주소 출력
         console.log("Token deployed at:", address(token));
