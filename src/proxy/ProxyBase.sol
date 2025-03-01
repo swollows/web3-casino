@@ -3,8 +3,6 @@ pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "forge-std/Script.sol";
-
 abstract contract ProxyBase is Ownable {
     bytes32 private constant IMPLEMENTATION_SLOT = bytes32(uint256(keccak256("eip1967.proxy.implementation")) - 1);
 
@@ -42,8 +40,6 @@ abstract contract ProxyBase is Ownable {
 
         address _impl = _getImplementation();
         require(_impl != address(0), "Implementation not set");
-
-        console.log("Implementation:", _impl);
 
         assembly {
             // 0x40 슬롯에 프록시 컨트랙트의 코드 크기를 저장

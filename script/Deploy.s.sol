@@ -41,7 +41,7 @@ contract Deploy is Script {
         require(result, "Failed to initialize");
 
         // 컨트랙트 주소 출력
-        console.log("Token deployed at:", address(token));
+        console.log("\nToken deployed at:", address(token));
         console.log("CoinTossProxy deployed at:", address(coinTossProxy));
         console.log("CoinTossGame deployed at:", address(coinTossGame));
         console.log("CoinTossCounter deployed at:", address(casinoCounter));

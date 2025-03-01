@@ -65,12 +65,6 @@ contract CoinTossGame is GameBase {
         require(playerBets[msg.sender] > 0, "You should bet first");
 
         coinTossResult[msg.sender] = coinToss();
-
-        console.log("coinTossResult[msg.sender]:", coinTossResult[msg.sender]);
-        console.log("coinTossPlayer[msg.sender]:", coinTossPlayer[msg.sender]);
-        console.log("block.prevrandao:", block.prevrandao);
-        console.log("block.timestamp:", block.timestamp);
-        console.log("block.number:", block.number);
     }
 
     /**

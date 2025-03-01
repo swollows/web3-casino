@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-//import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
-
-import "forge-std/Script.sol";
 
 contract CasinoCounter is AccessControl {
     enum GameType { CoinToss, Roulette, Blackjack }
