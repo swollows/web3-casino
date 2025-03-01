@@ -37,7 +37,9 @@ abstract contract GameBase is Pausable {
     // Mapping of player addresses to their game states
     mapping(address => GameState) public playerGameState;
 
-    // Check if the player address is valid
+    /**
+     * @notice Modifier to check if the player address is valid
+     */
     modifier checkInvalidAddress() {
         if (msg.sender == address(0)) {
             revert InvalidPlayerAddress(msg.sender);
@@ -45,7 +47,9 @@ abstract contract GameBase is Pausable {
         _;
     }
 
-    // Transition the game state when each function is finished
+    /**
+     * @notice Modifier to transition the game state when each function is finished
+     */
     modifier statusTransition() {
         _;
         if (playerGameState[msg.sender] == GameState.Claiming) {
@@ -55,12 +59,21 @@ abstract contract GameBase is Pausable {
         }
     }
 
+    /**
+     * @notice Modifier to check if the contract is initialized
+     */
     modifier isInitialized() {
         require(initialized, "Contract is not initialized");
         require(owner != address(0), "Owner is not set");
         _;
     }
 
+    /**
+     * @notice Initialize the contract
+     * @param _JCTToken The address of the JCTToken contract
+     * @param _casinoCounter The address of the CasinoCounter contract
+     * @param _owner The address of the owner
+     */
     function initialize(address _JCTToken, address _casinoCounter, address _owner) public {
         require(!initialized, "Contract already initialized");
         JCTToken = JonathanCasinoToken(_JCTToken);
@@ -69,18 +82,43 @@ abstract contract GameBase is Pausable {
         initialized = true;
     }
 
+    /**
+     * @notice Get the owner of the contract
+     * @return The address of the owner
+     */
     function getOwner() public view returns (address) {
         return owner;
     }
 
-    // Start the game
+    /**
+     * @notice Start the game
+     */
     function startGame() public virtual;
-    // placeBet() and draw() must be customed by developers
-    // Process the rewards
+
+    /**
+     * @notice Place a bet
+     */
+    function placeBet() public virtual;
+
+    /**
+     * @notice Draw the result
+     */
+    function draw() public virtual;
+
+    /**
+     * @notice Process the rewards
+     */
     function processRewards() public virtual;
-    // Claim the rewards
+
+    /**
+     * @notice Claim the rewards
+     */
     function claimRewards() public virtual;
 
+    /**
+     * @notice Multicall the functions
+     * @param data The data of the functions
+     */
     function multicall(bytes[] memory data) public {
         require(data.length > 0, "No data to call");
 

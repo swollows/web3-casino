@@ -14,7 +14,7 @@ contract Deploy is Script {
     function run() public {
         vm.startBroadcast(msg.sender);
         
-        // 컨트랙트 배포 (배포 시 1 ether를 보내야 함)
+        // Deploy the contracts (send 1 ether when deploying)
         JonathanCasinoToken token = new JonathanCasinoToken{value: 1 ether}(msg.sender);
 
         CoinTossProxy coinTossProxy = new CoinTossProxy();
@@ -46,7 +46,7 @@ contract Deploy is Script {
         (bool result2, ) = address(rouletteProxy).call{value: 0}(abi.encodeWithSignature("initialize(address,address,address)", address(token), address(casinoCounter), address(msg.sender)));
         require(result2, "Failed to initialize");
 
-        // 컨트랙트 주소 출력
+        // Print the addresses of the deployed contracts
         console.log("\nToken deployed at:", address(token));
         console.log("CoinTossProxy deployed at:", address(coinTossProxy));
         console.log("RouletteProxy deployed at:", address(rouletteProxy));

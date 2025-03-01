@@ -26,6 +26,10 @@ contract CoinTossGame is GameBase {
 
     bytes4 public constant PLACE_BET_SELECTOR = bytes4(keccak256("placeBet(uint256,bool)"));
     
+    /**
+     * @notice Modifier to check if the total amount of bets is less than or equal to the player's balance
+     * @param amounts The amount of bets
+     */
     modifier checkAmounts(uint256[] memory amounts) {
         uint256 totalAmount = 0;
 
@@ -129,7 +133,12 @@ contract CoinTossGame is GameBase {
         delete coinTossResult[msg.sender];
     }
 
-
+    /**
+     * @notice CoinToss Game Multiple Play
+     * @dev Before playing multiple games, check if the player is in ended state and has no reward
+     * @param amounts The amount of bets
+     * @param isHeads The prediction information of CoinToss Game
+     */
     function multiplePlay(uint256[] memory amounts, bool[] memory isHeads) public checkAmounts(amounts) {
         require(amounts.length > 0, "No amounts to play");
         require(amounts.length <= 10, "You can only play up to 10 games at a time");
