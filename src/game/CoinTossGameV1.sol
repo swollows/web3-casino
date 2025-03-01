@@ -103,9 +103,9 @@ contract CoinTossGame is GameBase {
 
         if (playerRewards[msg.sender] > 0) {
             JCTToken.approveFrom(address(JCTToken), address(this), playerRewards[msg.sender]);
+        } else {
+            JCTToken.approveFrom(address(msg.sender), address(this), playerBets[msg.sender]);
         }
-
-        playerBets[msg.sender] = 0;
     }
 
     /**
@@ -117,6 +117,8 @@ contract CoinTossGame is GameBase {
 
         if (playerRewards[msg.sender] > 0) {
             JCTToken.transferFrom(address(JCTToken), msg.sender, playerRewards[msg.sender]);
+        } else {
+            JCTToken.transferFrom(address(msg.sender), address(JCTToken), playerBets[msg.sender]);
         }
 
         casinoCounter.addTotalRewards(msg.sender, uint256(GAME_TYPE), playerRewards[msg.sender]);

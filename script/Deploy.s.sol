@@ -11,11 +11,11 @@ import "../src/game/RouletteGameV1.sol";
 import "../src/game/GameInterfaces.sol";
 
 contract Deploy is Script {
-    function run(address owner) public {
-        vm.startBroadcast(owner);
+    function run() public {
+        vm.startBroadcast(msg.sender);
         
         // 컨트랙트 배포 (배포 시 1 ether를 보내야 함)
-        JonathanCasinoToken token = new JonathanCasinoToken{value: 1 ether}(owner);
+        JonathanCasinoToken token = new JonathanCasinoToken{value: 1 ether}(msg.sender);
 
         CoinTossProxy coinTossProxy = new CoinTossProxy();
         RouletteProxy rouletteProxy = new RouletteProxy();
@@ -40,10 +40,10 @@ contract Deploy is Script {
         coinTossProxy.setImplementation(address(coinTossGame));
         rouletteProxy.setImplementation(address(rouletteGame));
 
-        (bool result1, ) = address(coinTossProxy).call{value: 0}(abi.encodeWithSignature("initialize(address,address,address)", address(token), address(casinoCounter), address(owner)));
+        (bool result1, ) = address(coinTossProxy).call{value: 0}(abi.encodeWithSignature("initialize(address,address,address)", address(token), address(casinoCounter), address(msg.sender)));
         require(result1, "Failed to initialize");
 
-        (bool result2, ) = address(rouletteProxy).call{value: 0}(abi.encodeWithSignature("initialize(address,address,address)", address(token), address(casinoCounter), address(owner)));
+        (bool result2, ) = address(rouletteProxy).call{value: 0}(abi.encodeWithSignature("initialize(address,address,address)", address(token), address(casinoCounter), address(msg.sender)));
         require(result2, "Failed to initialize");
 
         // 컨트랙트 주소 출력
