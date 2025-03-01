@@ -75,8 +75,6 @@ contract RouletteGame is GameBase {
         require(playerGameState[msg.sender] == GameState.Drawing, "You must in drawing state");
         require(playerBets[msg.sender] > 0, "You should bet first");
 
-        console.log("drawNumber", drawNumber());
-
         rouletteResult[msg.sender] = drawNumber();
     }
 

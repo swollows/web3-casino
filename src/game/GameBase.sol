@@ -84,8 +84,6 @@ abstract contract GameBase is Pausable {
     function multicall(bytes[] memory data) public {
         require(data.length > 0, "No data to call");
 
-        console.log("\nCaller:", msg.sender, "\n");
-
         for (uint256 i = 0; i < data.length; i++) {
             (bool success, bytes memory result) = address(this).delegatecall(data[i]);
             require(success, "Multicall failed");
