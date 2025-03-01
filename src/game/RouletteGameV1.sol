@@ -3,6 +3,8 @@ pragma solidity ^0.8.10;
 
 import "./GameBase.sol";
 
+import "forge-std/Script.sol";
+
 /**
  * @title Roulette Game
  * @dev Roulette Game Contract
@@ -19,20 +21,29 @@ import "./GameBase.sol";
  */
 
 contract RouletteGame is GameBase {
-    GameType public constant GAME_TYPE = GameType.Roulette;
-
     mapping(address => uint8) public playerNumber;
     mapping(address => uint8) public rouletteResult;
 
-    constructor(address _owner) {
-        owner = _owner;
+    GameType public constant GAME_TYPE = GameType.Roulette;
+
+    bytes4 public constant PLACE_BET_SELECTOR = bytes4(keccak256("placeBet(uint256,uint8)"));
+
+    modifier checkAmounts(uint256[] memory amounts) {
+        uint256 totalAmount = 0;
+
+        for (uint256 i = 0; i < amounts.length; i++) {
+            totalAmount += amounts[i];
+        }
+
+        require(totalAmount <= JCTToken.balanceOf(msg.sender), "Total amount cannot exceed your balance");
+        _;
     }
 
     /**
      * @notice Roulette Game Start
      * @dev Before starting the game, check if the player is not started/ended and has no reward
      */
-    function startGame() public override whenNotPaused checkInvalidAddress statusTransition {
+    function startGame() public override isInitialized checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Ended, "Player is not started/ended");
         require(playerRewards[msg.sender] == 0, "You should claim your reward before starting a new game");
 
@@ -44,14 +55,11 @@ contract RouletteGame is GameBase {
      * @param amount Betting amount
      * @param number Betting number
      */
-    function placeBet(uint256 amount, uint8 number) public whenNotPaused checkInvalidAddress statusTransition {
+    function placeBet(uint256 amount, uint8 number) public isInitialized checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Betting, "You must in betting state");
         require(amount >= MIN_BET && amount <= MAX_BET, "Invalid bet amount");
         require(playerBets[msg.sender] == 0 && playerNumber[msg.sender] == 0, "You should bet only once");
         require(number >= 0 && number <= 36, "Invalid bet number");
-
-        JCTToken.approveFrom(msg.sender, address(this), amount);
-        JCTToken.transferFrom(msg.sender, address(JCTToken), amount);
 
         playerBets[msg.sender] += amount;
         playerNumber[msg.sender] = number;
@@ -63,9 +71,11 @@ contract RouletteGame is GameBase {
      * @notice Roulette Game Draw
      * @dev Before drawing, check if the player is in drawing state and has bet
      */
-    function draw() public whenNotPaused checkInvalidAddress statusTransition {
+    function draw() public isInitialized checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Drawing, "You must in drawing state");
         require(playerBets[msg.sender] > 0, "You should bet first");
+
+        console.log("drawNumber", drawNumber());
 
         rouletteResult[msg.sender] = drawNumber();
     }
@@ -80,10 +90,10 @@ contract RouletteGame is GameBase {
 
     /**
      * @notice Roulette Game Process Rewards
-     * @dev Before processing the reward, check if the player is in drawing state and has bet
+     * @dev Before processing the reward, check if the player is in reward state and has bet
      */
-    function processRewards() public override whenNotPaused checkInvalidAddress statusTransition {
-        require(playerGameState[msg.sender] == GameState.Drawing, "You must in drawing state");
+    function processRewards() public override isInitialized checkInvalidAddress statusTransition {
+        require(playerGameState[msg.sender] == GameState.Rewarding, "You must in Rewarding state");
         require(playerBets[msg.sender] > 0, "You should bet first");
 
         if (playerNumber[msg.sender] == rouletteResult[msg.sender]) {
@@ -105,7 +115,7 @@ contract RouletteGame is GameBase {
      * @notice Roulette Game Claim Rewards
      * @dev Before claiming the reward, check if the player is in claiming state
      */
-    function claimRewards() public override whenNotPaused checkInvalidAddress statusTransition {
+    function claimRewards() public override isInitialized checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Claiming, "You must in claiming state");
 
         if (playerRewards[msg.sender] > 0) {
@@ -118,5 +128,29 @@ contract RouletteGame is GameBase {
         delete playerBets[msg.sender];
         delete playerNumber[msg.sender];
         delete rouletteResult[msg.sender];
+    }
+
+    function multiplePlay(uint256[] memory amounts, uint8[] memory numbers) public checkAmounts(amounts) {
+        require(amounts.length > 0, "No amounts to play");
+        require(amounts.length <= 10, "You can only play up to 10 games at a time");
+        require(amounts.length == numbers.length, "Amounts and numbers must be the same length");
+        require(playerGameState[msg.sender] == GameState.Ended, "Player is not started/ended");
+        require(playerRewards[msg.sender] == 0, "You should claim your reward before starting a new game");
+        
+        bytes[] memory data = new bytes[](amounts.length * 5);
+
+        uint256 idx = 0;
+
+        for (uint256 i = 0; i < amounts.length; i++) {
+            data[idx++] = abi.encodeWithSelector(START_GAME_SELECTOR);
+            data[idx++] = abi.encodeWithSelector(PLACE_BET_SELECTOR, amounts[i], numbers[i]);
+            data[idx++] = abi.encodeWithSelector(DRAW_SELECTOR);
+            data[idx++] = abi.encodeWithSelector(PROCESS_REWARDS_SELECTOR);
+            data[idx++] = abi.encodeWithSelector(CLAIM_REWARDS_SELECTOR);
+        }
+
+        bytes memory multicallData = abi.encodeWithSelector(MULTICALL_SELECTOR, data);
+        (bool success, ) = address(this).delegatecall(multicallData);
+        require(success, "Multicall failed");
     }
 }

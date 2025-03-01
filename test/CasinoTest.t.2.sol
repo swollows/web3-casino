@@ -5,15 +5,11 @@ import "forge-std/Test.sol";
 import "../src/proxy/GameProxy.sol";
 import "../src/token/JonathanCasinoToken.sol";
 import "../src/game/CoinTossGameV1.sol";
+import "../src/game/RouletteGameV1.sol";
+import "../src/counter/CasinoCounter.sol";
 
-interface ICoinTossGame {
-    function startGame() external;
-    function placeBet(uint256 amount, bool isHead) external;
-    function draw() external;
-    function processRewards() external;
-    function claimRewards() external;
-    function initialize(address _JCTToken, address _casinoCounter, address _proxy) external;
-}
+// Game Interfaces
+import "../src/game/GameInterfaces.sol";
 
 contract CasinoGameProxyTest is Test {
     JonathanCasinoToken public token;
@@ -77,7 +73,6 @@ contract CasinoGameProxyTest is Test {
         console.log("Token deployed at:", address(token));
         console.log("CoinTossGame owner:", coinTossGame.getOwner());
         console.log("RouletteGame owner:", rouletteGame.getOwner());
-        console.log("CasinoCounter owner:", casinoCounter.getOwner());
         
         vm.stopPrank();
     }
@@ -176,6 +171,58 @@ contract CasinoGameProxyTest is Test {
         console.log("Total rewards:", casinoCounter.totalRewards(player1, uint256(GameType.CoinToss)));
     }
 
+    function testCoinTossGameMultiplePlay() public {
+        // 충전 전 토큰 잔액 확인
+        console.log("Token balance of owner:", token.balanceOf(owner));
+        console.log("Token balance of player1:", token.balanceOf(player1));
+
+        // 충전
+        vm.prank(player1);
+        token.deposit{value: 200000 * 10e3}();
+
+        vm.startPrank(player1);
+
+        uint256[] memory amounts = new uint256[](10);
+        for (uint256 i = 0; i < amounts.length; i++) {
+            amounts[i] = 2000;
+        }
+
+        bool[] memory isHeads = new bool[](10);
+        for (uint256 i = 0; i < isHeads.length; i++) {
+            isHeads[i] = false;
+        }
+
+        // 시작 전 토큰 잔액 상태 확인
+        console.log("\nBefore multiple play");
+        console.log("Token balance of owner:", token.balanceOf(owner));
+        console.log("Token balance of player1:", token.balanceOf(player1));
+
+        console.log("\nCheck CasinoCounter (CoinToss)");
+        console.log("Total plays:", casinoCounter.totalPlays(player1, uint256(GameType.CoinToss)));
+        console.log("Total wins:", casinoCounter.totalWins(player1, uint256(GameType.CoinToss)));
+        console.log("Total losses:", casinoCounter.totalLosses(player1, uint256(GameType.CoinToss)));
+        console.log("Total draws:", casinoCounter.totalDraws(player1, uint256(GameType.CoinToss)));
+        console.log("Total bets:", casinoCounter.totalBets(player1, uint256(GameType.CoinToss)));
+        console.log("Total rewards:", casinoCounter.totalRewards(player1, uint256(GameType.CoinToss)));
+
+        ICoinTossGame(address(coinTossProxy)).multiplePlay(amounts, isHeads);
+
+        // 종료 후 토큰 잔액 상태 확인
+        console.log("\nAfter multiple play");
+        console.log("Token balance of owner:", token.balanceOf(owner));
+        console.log("Token balance of player1:", token.balanceOf(player1));
+
+        console.log("\nCheck CasinoCounter (CoinToss)");
+        console.log("Total plays:", casinoCounter.totalPlays(player1, uint256(GameType.CoinToss)));
+        console.log("Total wins:", casinoCounter.totalWins(player1, uint256(GameType.CoinToss)));
+        console.log("Total losses:", casinoCounter.totalLosses(player1, uint256(GameType.CoinToss)));
+        console.log("Total draws:", casinoCounter.totalDraws(player1, uint256(GameType.CoinToss)));
+        console.log("Total bets:", casinoCounter.totalBets(player1, uint256(GameType.CoinToss)));
+        console.log("Total rewards:", casinoCounter.totalRewards(player1, uint256(GameType.CoinToss)));
+
+        vm.stopPrank();
+    }
+
     function testRouletteGameWin() public {
         // 충전 전 토큰 잔액 확인
         console.log("Token balance of owner:", token.balanceOf(owner));
@@ -196,7 +243,7 @@ contract CasinoGameProxyTest is Test {
         IRouletteGame(address(rouletteProxy)).startGame();
 
         // 베팅
-        IRouletteGame(address(rouletteProxy)).placeBet(2000, 1);
+        IRouletteGame(address(rouletteProxy)).placeBet(2000, 2);
 
         // 룰렛 추첨
         IRouletteGame(address(rouletteProxy)).draw();
@@ -266,5 +313,57 @@ contract CasinoGameProxyTest is Test {
         console.log("Total losses:", casinoCounter.totalLosses(player1, uint256(GameType.Roulette)));
         console.log("Total bets:", casinoCounter.totalBets(player1, uint256(GameType.Roulette)));
         console.log("Total rewards:", casinoCounter.totalRewards(player1, uint256(GameType.Roulette)));
+    }
+
+    function testRouletteGameMultiplePlay() public {
+        // 충전 전 토큰 잔액 확인
+        console.log("Token balance of owner:", token.balanceOf(owner));
+        console.log("Token balance of player1:", token.balanceOf(player1));
+
+        // 충전
+        vm.prank(player1);
+        token.deposit{value: 200000 * 10e3}();
+
+        vm.startPrank(player1);
+
+        uint256[] memory amounts = new uint256[](10);
+        for (uint256 i = 0; i < amounts.length; i++) {
+            amounts[i] = 2000;
+        }
+
+        uint8[] memory numbers = new uint8[](10);
+        for (uint256 i = 0; i < numbers.length; i++) {
+            numbers[i] = uint8(2);
+        }
+
+        // 시작 전 토큰 잔액 상태 확인
+        console.log("\nBefore multiple play");
+        console.log("Token balance of owner:", token.balanceOf(owner));
+        console.log("Token balance of player1:", token.balanceOf(player1));
+
+        console.log("\nCheck CasinoCounter (Roulette)");
+        console.log("Total plays:", casinoCounter.totalPlays(player1, uint256(GameType.Roulette)));
+        console.log("Total wins:", casinoCounter.totalWins(player1, uint256(GameType.Roulette)));
+        console.log("Total losses:", casinoCounter.totalLosses(player1, uint256(GameType.Roulette)));
+        console.log("Total draws:", casinoCounter.totalDraws(player1, uint256(GameType.CoinToss)));
+        console.log("Total bets:", casinoCounter.totalBets(player1, uint256(GameType.CoinToss)));
+        console.log("Total rewards:", casinoCounter.totalRewards(player1, uint256(GameType.CoinToss)));
+
+        IRouletteGame(address(rouletteProxy)).multiplePlay(amounts, numbers);
+
+        // 종료 후 토큰 잔액 상태 확인
+        console.log("\nAfter multiple play");
+        console.log("Token balance of owner:", token.balanceOf(owner));
+        console.log("Token balance of player1:", token.balanceOf(player1));
+
+        console.log("\nCheck CasinoCounter (Roulette)");
+        console.log("Total plays:", casinoCounter.totalPlays(player1, uint256(GameType.Roulette)));
+        console.log("Total wins:", casinoCounter.totalWins(player1, uint256(GameType.Roulette)));
+        console.log("Total losses:", casinoCounter.totalLosses(player1, uint256(GameType.Roulette)));
+        console.log("Total draws:", casinoCounter.totalDraws(player1, uint256(GameType.Roulette)));
+        console.log("Total bets:", casinoCounter.totalBets(player1, uint256(GameType.Roulette)));
+        console.log("Total rewards:", casinoCounter.totalRewards(player1, uint256(GameType.Roulette)));
+
+        vm.stopPrank();
     }
 }

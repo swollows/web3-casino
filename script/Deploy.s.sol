@@ -7,14 +7,8 @@ import "../src/proxy/GameProxy.sol";
 import "../src/game/CoinTossGameV1.sol";
 import "../src/game/RouletteGameV1.sol";
 
-interface ICoinTossGame {
-    function startGame() external;
-    function placeBet(uint256 amount, bool isHead) external;
-    function draw() external;
-    function processRewards() external;
-    function claimRewards() external;
-    function initialize(address _JCTToken, address _casinoCounter, address _owner) external;
-}
+// Game Interfaces
+import "../src/game/GameInterfaces.sol";
 
 contract Deploy is Script {
     function run(address owner) public {

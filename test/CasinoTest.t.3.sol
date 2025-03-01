@@ -5,21 +5,19 @@ import "forge-std/Test.sol";
 import "../src/proxy/GameProxy.sol";
 import "../src/token/JonathanCasinoToken.sol";
 import "../src/game/CoinTossGameV1.sol";
+import "../src/game/RouletteGameV1.sol";
+import "../src/counter/CasinoCounter.sol";
 
-interface ICoinTossGame {
-    function startGame() external;
-    function placeBet(uint256 amount, bool isHead) external;
-    function draw() external;
-    function processRewards() external;
-    function claimRewards() external;
-    function initialize(address _JCTToken, address _casinoCounter, address _proxy) external;
-}
+// Game Interfaces
+import "../src/game/GameInterfaces.sol";
 
 contract LocalNetworkTest is Test {
     JonathanCasinoToken public token;
     CasinoCounter casinoCounter;
     CoinTossProxy coinTossProxy;
+    RouletteProxy rouletteProxy;
     CoinTossGame coinTossGame;
+    RouletteGame rouletteGame;
 
     enum GameType { CoinToss, Roulette, Blackjack }
     
@@ -43,27 +41,39 @@ contract LocalNetworkTest is Test {
         token = new JonathanCasinoToken{value: 1 ether}(owner);
 
         coinTossProxy = new CoinTossProxy();
-
-        casinoCounter = new CasinoCounter(address(coinTossProxy));
+        rouletteProxy = new RouletteProxy();
+        
+        casinoCounter = new CasinoCounter(address(coinTossProxy), address(rouletteProxy));
 
         coinTossProxy.setCasinoCounter(address(casinoCounter));
         coinTossProxy.setJCTToken(address(token));
 
-        coinTossGame = new CoinTossGame();
+        rouletteProxy.setCasinoCounter(address(casinoCounter));
+        rouletteProxy.setJCTToken(address(token));
 
-        console.log("CoinTossGame owner:", coinTossGame.getOwner());
+        coinTossGame = new CoinTossGame();
+        rouletteGame = new RouletteGame();
+
         console.log("CoinTossProxy address:", address(coinTossProxy));
         console.log("CoinTossGame address:", address(coinTossGame));
-        console.log("CoinTossCounter address:", address(casinoCounter));
+        console.log("RouletteProxy address:", address(rouletteProxy));
+        console.log("RouletteGame address:", address(rouletteGame));
+        console.log("CasinoCounter address:", address(casinoCounter));
 
         coinTossProxy.setImplementation(address(coinTossGame));
+        rouletteProxy.setImplementation(address(rouletteGame));
 
-        (bool result, ) = address(coinTossProxy).call{value: 0}(abi.encodeWithSignature("initialize(address,address,address)", address(token), address(casinoCounter), address(owner)));
-        require(result, "Failed to initialize");
+        (bool result1, ) = address(coinTossProxy).call{value: 0}(abi.encodeWithSignature("initialize(address,address,address)", address(token), address(casinoCounter), address(owner)));
+        require(result1, "Failed to initialize");
+
+        (bool result2, ) = address(rouletteProxy).call{value: 0}(abi.encodeWithSignature("initialize(address,address,address)", address(token), address(casinoCounter), address(owner)));
+        require(result2, "Failed to initialize");
 
         // 컨트랙트 주소 출력
         console.log("Token deployed at:", address(token));
-
+        console.log("CoinTossGame owner:", coinTossGame.getOwner());
+        console.log("RouletteGame owner:", rouletteGame.getOwner());
+        
         vm.stopPrank();
     }
 

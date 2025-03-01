@@ -24,6 +24,19 @@ contract CoinTossGame is GameBase {
 
     GameType public constant GAME_TYPE = GameType.CoinToss;
 
+    bytes4 public constant PLACE_BET_SELECTOR = bytes4(keccak256("placeBet(uint256,bool)"));
+    
+    modifier checkAmounts(uint256[] memory amounts) {
+        uint256 totalAmount = 0;
+
+        for (uint256 i = 0; i < amounts.length; i++) {
+            totalAmount += amounts[i];
+        }
+
+        require(totalAmount <= JCTToken.balanceOf(msg.sender), "Total amount cannot exceed your balance");
+        _;
+    }
+
     /**
      * @notice CoinToss Game Start
      * @dev Before starting the game, check if the player is not started/ended and has no reward
@@ -45,9 +58,6 @@ contract CoinTossGame is GameBase {
         require(amount >= MIN_BET && amount <= MAX_BET, "Invalid bet amount");
         require(JCTToken.balanceOf(msg.sender) >= amount, "Insufficient balance");
         require(playerBets[msg.sender] == 0, "You should bet only once");
-
-        JCTToken.approveFrom(msg.sender, address(this), amount);
-        JCTToken.transferFrom(msg.sender, address(JCTToken), amount);
 
         playerBets[msg.sender] += amount;
         coinTossPlayer[msg.sender] = isHead;
@@ -77,7 +87,7 @@ contract CoinTossGame is GameBase {
 
     /**
      * @notice CoinToss Game Process Rewards
-     * @dev Before processing the reward, check if the player is in drawing state and has bet
+     * @dev Before processing the reward, check if the player is in reward state and has bet
      */
     function processRewards() public override isInitialized checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Rewarding, "You must in Rewarding state");
@@ -115,5 +125,30 @@ contract CoinTossGame is GameBase {
         delete playerBets[msg.sender];
         delete coinTossPlayer[msg.sender];
         delete coinTossResult[msg.sender];
+    }
+
+
+    function multiplePlay(uint256[] memory amounts, bool[] memory isHeads) public checkAmounts(amounts) {
+        require(amounts.length > 0, "No amounts to play");
+        require(amounts.length <= 10, "You can only play up to 10 games at a time");
+        require(amounts.length == isHeads.length, "Amounts and numbers must be the same length");
+        require(playerGameState[msg.sender] == GameState.Ended, "Player is not started/ended");
+        require(playerRewards[msg.sender] == 0, "You should claim your reward before starting a new game");
+        
+        bytes[] memory data = new bytes[](amounts.length * 5);
+
+        uint256 idx = 0;
+
+        for (uint256 i = 0; i < amounts.length; i++) {
+            data[idx++] = abi.encodeWithSelector(START_GAME_SELECTOR);
+            data[idx++] = abi.encodeWithSelector(PLACE_BET_SELECTOR, amounts[i], isHeads[i]);
+            data[idx++] = abi.encodeWithSelector(DRAW_SELECTOR);
+            data[idx++] = abi.encodeWithSelector(PROCESS_REWARDS_SELECTOR);
+            data[idx++] = abi.encodeWithSelector(CLAIM_REWARDS_SELECTOR);
+        }
+
+        bytes memory multicallData = abi.encodeWithSelector(MULTICALL_SELECTOR, data);
+        (bool success, ) = address(this).delegatecall(multicallData);
+        require(success, "Multicall failed");
     }
 }
