@@ -17,13 +17,9 @@ contract CasinoCounter is AccessControl {
 
     /**
      * @notice Constructor of the CasinoCounter contract
-     * @param _coinTossProxy The address of the CoinTossGame contract
-     * @param _rouletteProxy The address of the RouletteGame contract
      */
-    constructor(address _coinTossProxy, address _rouletteProxy) {
+    constructor() {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(GAME_PROXY_ROLE, _coinTossProxy);
-        _grantRole(GAME_PROXY_ROLE, _rouletteProxy);
     }
 
     /**
