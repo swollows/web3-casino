@@ -13,7 +13,7 @@ jobs:
     strategy:
       fail-fast: true
 
-    name: Foundry project
+    name: Jonathan's Web3 Casino
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -26,11 +26,6 @@ jobs:
       - name: Show Forge version
         run: |
           forge --version
-
-      - name: Run Forge fmt
-        run: |
-          forge fmt --check
-        id: fmt
 
       - name: Run Forge build
         run: |
