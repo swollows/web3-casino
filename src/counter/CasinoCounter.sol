@@ -15,9 +15,10 @@ contract CasinoCounter is AccessControl {
 
     bytes32 public constant GAME_PROXY_ROLE = keccak256("GAME_PROXY_ROLE");
 
-    constructor(address _proxy) {
+    constructor(address _coinTossProxy, address _rouletteProxy) {
         _grantRole(DEFAULT_ADMIN_ROLE, msg.sender);
-        _grantRole(GAME_PROXY_ROLE, _proxy);
+        _grantRole(GAME_PROXY_ROLE, _coinTossProxy);
+        _grantRole(GAME_PROXY_ROLE, _rouletteProxy);
     }
 
     function getAllInfo(address _player) public view returns (

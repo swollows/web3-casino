@@ -19,7 +19,9 @@ contract CasinoGameProxyTest is Test {
     JonathanCasinoToken public token;
     CasinoCounter casinoCounter;
     CoinTossProxy coinTossProxy;
+    RouletteProxy rouletteProxy;
     CoinTossGame coinTossGame;
+    RouletteGame rouletteGame;
 
     enum GameType { CoinToss, Roulette, Blackjack }
     
@@ -43,75 +45,41 @@ contract CasinoGameProxyTest is Test {
         token = new JonathanCasinoToken{value: 1 ether}(owner);
 
         coinTossProxy = new CoinTossProxy();
-
-        casinoCounter = new CasinoCounter(address(coinTossProxy));
+        rouletteProxy = new RouletteProxy();
+        
+        casinoCounter = new CasinoCounter(address(coinTossProxy), address(rouletteProxy));
 
         coinTossProxy.setCasinoCounter(address(casinoCounter));
         coinTossProxy.setJCTToken(address(token));
 
+        rouletteProxy.setCasinoCounter(address(casinoCounter));
+        rouletteProxy.setJCTToken(address(token));
+
         coinTossGame = new CoinTossGame();
+        rouletteGame = new RouletteGame();
 
         console.log("CoinTossProxy address:", address(coinTossProxy));
         console.log("CoinTossGame address:", address(coinTossGame));
-        console.log("CoinTossCounter address:", address(casinoCounter));
+        console.log("RouletteProxy address:", address(rouletteProxy));
+        console.log("RouletteGame address:", address(rouletteGame));
+        console.log("CasinoCounter address:", address(casinoCounter));
 
         coinTossProxy.setImplementation(address(coinTossGame));
+        rouletteProxy.setImplementation(address(rouletteGame));
 
-        (bool result, ) = address(coinTossProxy).call{value: 0}(abi.encodeWithSignature("initialize(address,address,address)", address(token), address(casinoCounter), address(owner)));
-        require(result, "Failed to initialize");
+        (bool result1, ) = address(coinTossProxy).call{value: 0}(abi.encodeWithSignature("initialize(address,address,address)", address(token), address(casinoCounter), address(owner)));
+        require(result1, "Failed to initialize");
+
+        (bool result2, ) = address(rouletteProxy).call{value: 0}(abi.encodeWithSignature("initialize(address,address,address)", address(token), address(casinoCounter), address(owner)));
+        require(result2, "Failed to initialize");
 
         // 컨트랙트 주소 출력
         console.log("Token deployed at:", address(token));
         console.log("CoinTossGame owner:", coinTossGame.getOwner());
-
+        console.log("RouletteGame owner:", rouletteGame.getOwner());
+        console.log("CasinoCounter owner:", casinoCounter.getOwner());
+        
         vm.stopPrank();
-    }
-
-    function testCoinTossGame() public {
-        // 충전 전 토큰 잔액 확인
-        console.log("Token balance of owner:", token.balanceOf(owner));
-        console.log("Token balance of player1:", token.balanceOf(player1));
-
-        // 충전
-        vm.prank(player1);
-        token.deposit{value: 200000 * 10e3}();
-
-        // 시작 전 토큰 잔액 확인
-        console.log("\nBefore game start");
-        console.log("Token balance of owner:", token.balanceOf(owner));
-        console.log("Token balance of player1:", token.balanceOf(player1));
-
-        vm.startPrank(player1);
-
-        // 게임 시작
-        ICoinTossGame(address(coinTossProxy)).startGame();
-
-        // 베팅
-        ICoinTossGame(address(coinTossProxy)).placeBet(2000, true);
-
-        // 코인 토스 추첨
-        ICoinTossGame(address(coinTossProxy)).draw();
-
-        // 보상 수여
-        ICoinTossGame(address(coinTossProxy)).processRewards();
-
-        // 보상 획득
-        ICoinTossGame(address(coinTossProxy)).claimRewards();
-
-        vm.stopPrank();
-
-        // 종료 후 토큰 잔액 상태 확인
-        console.log("\nAfter game end");
-        console.log("Token balance of owner:", token.balanceOf(owner));
-        console.log("Token balance of player1:", token.balanceOf(player1));
-
-        console.log("\nCheck CasinoCounter (CoinToss)");
-        console.log("Total plays:", casinoCounter.totalPlays(player1, uint256(GameType.CoinToss)));
-        console.log("Total wins:", casinoCounter.totalWins(player1, uint256(GameType.CoinToss)));
-        console.log("Total losses:", casinoCounter.totalLosses(player1, uint256(GameType.CoinToss)));
-        console.log("Total draws:", casinoCounter.totalDraws(player1, uint256(GameType.CoinToss)));
-        console.log("Total bets:", casinoCounter.totalBets(player1, uint256(GameType.CoinToss)));
-        console.log("Total rewards:", casinoCounter.totalRewards(player1, uint256(GameType.CoinToss)));
     }
 
     function testCoinTossGameWin() public {
@@ -159,5 +127,144 @@ contract CasinoGameProxyTest is Test {
         console.log("Total draws:", casinoCounter.totalDraws(player1, uint256(GameType.CoinToss)));
         console.log("Total bets:", casinoCounter.totalBets(player1, uint256(GameType.CoinToss)));
         console.log("Total rewards:", casinoCounter.totalRewards(player1, uint256(GameType.CoinToss)));
+    }
+
+    function testCoinTossGameLose() public {
+        // 충전 전 토큰 잔액 확인
+        console.log("Token balance of owner:", token.balanceOf(owner));
+        console.log("Token balance of player1:", token.balanceOf(player1));
+
+        // 충전
+        vm.prank(player1);
+        token.deposit{value: 200000 * 10e3}();
+
+        // 시작 전 토큰 잔액 확인
+        console.log("\nBefore game start");
+        console.log("Token balance of owner:", token.balanceOf(owner));
+        console.log("Token balance of player1:", token.balanceOf(player1));
+
+        vm.startPrank(player1);
+
+        // 게임 시작
+        ICoinTossGame(address(coinTossProxy)).startGame();
+
+        // 베팅
+        ICoinTossGame(address(coinTossProxy)).placeBet(2000, true);
+
+        // 코인 토스 추첨
+        ICoinTossGame(address(coinTossProxy)).draw();
+
+        // 보상 수여
+        ICoinTossGame(address(coinTossProxy)).processRewards();
+
+        // 보상 획득
+        ICoinTossGame(address(coinTossProxy)).claimRewards();
+
+        vm.stopPrank();
+
+        // 종료 후 토큰 잔액 상태 확인
+        console.log("\nAfter game end");
+        console.log("Token balance of owner:", token.balanceOf(owner));
+        console.log("Token balance of player1:", token.balanceOf(player1));
+
+        console.log("\nCheck CasinoCounter (CoinToss)");
+        console.log("Total plays:", casinoCounter.totalPlays(player1, uint256(GameType.CoinToss)));
+        console.log("Total wins:", casinoCounter.totalWins(player1, uint256(GameType.CoinToss)));
+        console.log("Total losses:", casinoCounter.totalLosses(player1, uint256(GameType.CoinToss)));
+        console.log("Total draws:", casinoCounter.totalDraws(player1, uint256(GameType.CoinToss)));
+        console.log("Total bets:", casinoCounter.totalBets(player1, uint256(GameType.CoinToss)));
+        console.log("Total rewards:", casinoCounter.totalRewards(player1, uint256(GameType.CoinToss)));
+    }
+
+    function testRouletteGameWin() public {
+        // 충전 전 토큰 잔액 확인
+        console.log("Token balance of owner:", token.balanceOf(owner));
+        console.log("Token balance of player1:", token.balanceOf(player1));
+
+        // 충전
+        vm.prank(player1);
+        token.deposit{value: 200000 * 10e3}();
+
+        // 시작 전 토큰 잔액 확인
+        console.log("\nBefore game start");
+        console.log("Token balance of owner:", token.balanceOf(owner));
+        console.log("Token balance of player1:", token.balanceOf(player1));
+
+        vm.startPrank(player1);
+
+        // 게임 시작
+        IRouletteGame(address(rouletteProxy)).startGame();
+
+        // 베팅
+        IRouletteGame(address(rouletteProxy)).placeBet(2000, 1);
+
+        // 룰렛 추첨
+        IRouletteGame(address(rouletteProxy)).draw();
+
+        // 보상 수여
+        IRouletteGame(address(rouletteProxy)).processRewards();
+
+        // 보상 획득
+        IRouletteGame(address(rouletteProxy)).claimRewards();
+
+        vm.stopPrank();
+
+        // 종료 후 토큰 잔액 상태 확인
+        console.log("\nAfter game end");
+        console.log("Token balance of owner:", token.balanceOf(owner));
+        console.log("Token balance of player1:", token.balanceOf(player1));
+
+        console.log("\nCheck CasinoCounter (Roulette)");
+        console.log("Total plays:", casinoCounter.totalPlays(player1, uint256(GameType.Roulette)));
+        console.log("Total wins:", casinoCounter.totalWins(player1, uint256(GameType.Roulette)));
+        console.log("Total losses:", casinoCounter.totalLosses(player1, uint256(GameType.Roulette)));
+        console.log("Total bets:", casinoCounter.totalBets(player1, uint256(GameType.Roulette)));
+        console.log("Total rewards:", casinoCounter.totalRewards(player1, uint256(GameType.Roulette)));
+    }
+
+    function testRouletteGameLose() public {
+        // 충전 전 토큰 잔액 확인
+        console.log("Token balance of owner:", token.balanceOf(owner));
+        console.log("Token balance of player1:", token.balanceOf(player1));
+
+        // 충전
+        vm.prank(player1);
+        token.deposit{value: 200000 * 10e3}();
+
+        // 시작 전 토큰 잔액 확인
+        console.log("\nBefore game start");
+        console.log("Token balance of owner:", token.balanceOf(owner));
+        console.log("Token balance of player1:", token.balanceOf(player1));
+
+        vm.startPrank(player1);
+
+        // 게임 시작
+        IRouletteGame(address(rouletteProxy)).startGame();
+
+        // 베팅
+        IRouletteGame(address(rouletteProxy)).placeBet(2000, 1);
+
+        // 룰렛 추첨
+        IRouletteGame(address(rouletteProxy)).draw();
+
+        // 보상 수여
+        IRouletteGame(address(rouletteProxy)).processRewards();
+
+        // 보상 획득
+        IRouletteGame(address(rouletteProxy)).claimRewards();
+
+        vm.stopPrank();
+
+        // 종료 후 토큰 잔액 상태 확인
+        console.log("\nAfter game end");
+        console.log("Token balance of owner:", token.balanceOf(owner));
+        console.log("Token balance of player1:", token.balanceOf(player1));
+
+        console.log("\nCheck CasinoCounter (Roulette)");
+        console.log("Total plays:", casinoCounter.totalPlays(player1, uint256(GameType.Roulette)));
+        console.log("Total wins:", casinoCounter.totalWins(player1, uint256(GameType.Roulette)));
+        console.log("Total losses:", casinoCounter.totalLosses(player1, uint256(GameType.Roulette)));
+        console.log("Total bets:", casinoCounter.totalBets(player1, uint256(GameType.Roulette)));
+        console.log("Total rewards:", casinoCounter.totalRewards(player1, uint256(GameType.Roulette)));
     }
 }
