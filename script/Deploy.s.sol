@@ -45,6 +45,7 @@ contract Deploy is Script {
 
         // Print the addresses of the deployed contracts
         console.log("\nToken deployed at:", address(token));
+        console.log("Token deployed at:", address(token));
         console.log("CoinTossProxy deployed at:", address(coinTossProxy));
         console.log("RouletteProxy deployed at:", address(rouletteProxy));
         console.log("CoinTossGame deployed at:", address(coinTossGame));

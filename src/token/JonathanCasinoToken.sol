@@ -11,8 +11,6 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
  */
 /// @custom:security-contact jonathan@upside.center
 contract JonathanCasinoToken is ERC20, ERC20Burnable, Ownable {
-    mapping(address => uint256[]) public playerInvestList;
-
     bool public isEmergency = false;
 
     /**
