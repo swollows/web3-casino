@@ -9,6 +9,8 @@ import "../counter/CasinoCounter.sol";
 import "@openzeppelin/contracts/utils/Pausable.sol";
 
 abstract contract GameBase is Pausable {
+    error InvalidPlayerAddress(address player);
+
     JonathanCasinoToken JCTToken;
     CasinoCounter casinoCounter;
 
@@ -21,8 +23,6 @@ abstract contract GameBase is Pausable {
     bytes4 public constant PROCESS_REWARDS_SELECTOR = bytes4(keccak256("processRewards()"));
     bytes4 public constant CLAIM_REWARDS_SELECTOR = bytes4(keccak256("claimRewards()"));
     bytes4 public constant MULTICALL_SELECTOR = bytes4(keccak256("multicall(bytes[])"));
-
-    error InvalidPlayerAddress(address player);
 
     enum GameType { CoinToss, Roulette, Blackjack }
     enum GameState { Ended, Betting, Drawing, Rewarding, Claiming }
