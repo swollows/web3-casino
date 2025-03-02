@@ -28,13 +28,13 @@ contract CoinTossGame is GameBase {
     
     /**
      * @notice Modifier to check if the total amount of bets is less than or equal to the player's balance
-     * @param amounts The amount of bets
+     * @param _amounts The amount of bets
      */
-    modifier checkAmounts(uint256[] memory amounts) {
+    modifier checkAmounts(uint256[] memory _amounts) {
         uint256 totalAmount = 0;
 
-        for (uint256 i = 0; i < amounts.length; i++) {
-            totalAmount += amounts[i];
+        for (uint256 i = 0; i < _amounts.length; i++) {
+            totalAmount += _amounts[i];
         }
 
         require(totalAmount <= JCTToken.balanceOf(msg.sender), "Total amount cannot exceed your balance");
@@ -54,19 +54,19 @@ contract CoinTossGame is GameBase {
 
     /**
      * @notice CoinToss Game Bet
-     * @param amount Betting amount
-     * @param isHead Prediction information of CoinToss Game
+     * @param _amount Betting amount
+     * @param _isHead Prediction information of CoinToss Game
      */
-    function placeBet(uint256 amount, bool isHead) public isInitialized checkInvalidAddress statusTransition {
+    function placeBet(uint256 _amount, bool _isHead) public isInitialized checkInvalidAddress statusTransition {
         require(playerGameState[msg.sender] == GameState.Betting, "You must in betting state");
-        require(amount >= MIN_BET && amount <= MAX_BET, "Invalid bet amount");
-        require(JCTToken.balanceOf(msg.sender) >= amount, "Insufficient balance");
+        require(_amount >= MIN_BET && _amount <= MAX_BET, "Invalid bet amount");
+        require(JCTToken.balanceOf(msg.sender) >= _amount, "Insufficient balance");
         require(playerBets[msg.sender] == 0, "You should bet only once");
 
-        playerBets[msg.sender] += amount;
-        coinTossPlayer[msg.sender] = isHead;
+        playerBets[msg.sender] += _amount;
+        coinTossPlayer[msg.sender] = _isHead;
 
-        casinoCounter.addTotalBets(msg.sender, uint256(GAME_TYPE), amount);
+        casinoCounter.addTotalBets(msg.sender, uint256(GAME_TYPE), _amount);
     }
 
     /**
@@ -136,23 +136,23 @@ contract CoinTossGame is GameBase {
     /**
      * @notice CoinToss Game Multiple Play
      * @dev Before playing multiple games, check if the player is in ended state and has no reward
-     * @param amounts The amount of bets
-     * @param isHeads The prediction information of CoinToss Game
+     * @param _amounts The amount of bets
+     * @param _isHeads The prediction information of CoinToss Game
      */
-    function multiplePlay(uint256[] memory amounts, bool[] memory isHeads) public checkAmounts(amounts) {
-        require(amounts.length > 0, "No amounts to play");
-        require(amounts.length <= 10, "You can only play up to 10 games at a time");
-        require(amounts.length == isHeads.length, "Amounts and numbers must be the same length");
+    function multiplePlay(uint256[] memory _amounts, bool[] memory _isHeads) public checkAmounts(_amounts) {
+        require(_amounts.length > 0, "No amounts to play");
+        require(_amounts.length <= 10, "You can only play up to 10 games at a time");
+        require(_amounts.length == _isHeads.length, "Amounts and numbers must be the same length");
         require(playerGameState[msg.sender] == GameState.Ended, "Player is not started/ended");
         require(playerRewards[msg.sender] == 0, "You should claim your reward before starting a new game");
         
-        bytes[] memory data = new bytes[](amounts.length * 5);
+        bytes[] memory data = new bytes[](_amounts.length * 5);
 
         uint256 idx = 0;
 
-        for (uint256 i = 0; i < amounts.length; i++) {
+        for (uint256 i = 0; i < _amounts.length; i++) {
             data[idx++] = abi.encodeWithSelector(START_GAME_SELECTOR);
-            data[idx++] = abi.encodeWithSelector(PLACE_BET_SELECTOR, amounts[i], isHeads[i]);
+            data[idx++] = abi.encodeWithSelector(PLACE_BET_SELECTOR, _amounts[i], _isHeads[i]);
             data[idx++] = abi.encodeWithSelector(DRAW_SELECTOR);
             data[idx++] = abi.encodeWithSelector(PROCESS_REWARDS_SELECTOR);
             data[idx++] = abi.encodeWithSelector(CLAIM_REWARDS_SELECTOR);

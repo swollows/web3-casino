@@ -96,16 +96,6 @@ abstract contract GameBase is Pausable {
     function startGame() public virtual;
 
     /**
-     * @notice Place a bet
-     */
-    function placeBet() public virtual;
-
-    /**
-     * @notice Draw the result
-     */
-    function draw() public virtual;
-
-    /**
      * @notice Process the rewards
      */
     function processRewards() public virtual;
@@ -117,13 +107,13 @@ abstract contract GameBase is Pausable {
 
     /**
      * @notice Multicall the functions
-     * @param data The data of the functions
+     * @param _data The data of the functions
      */
-    function multicall(bytes[] memory data) public {
-        require(data.length > 0, "No data to call");
+    function multicall(bytes[] memory _data) public {
+        require(_data.length > 0, "No data to call");
 
-        for (uint256 i = 0; i < data.length; i++) {
-            (bool success, bytes memory result) = address(this).delegatecall(data[i]);
+        for (uint256 i = 0; i < _data.length; i++) {
+            (bool success, bytes memory result) = address(this).delegatecall(_data[i]);
             require(success, "Multicall failed");
         }
     }

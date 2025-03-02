@@ -103,11 +103,11 @@ contract JonathanCasinoToken is ERC20, ERC20Burnable, Ownable {
      * @param _to The address to update the tokens to
      * @param _value The amount of tokens to update
      */
-    function _update(address from, address to, uint256 value)
+    function _update(address _from, address _to, uint256 _value)
         internal
         override(ERC20)
     {
-        super._update(from, to, value);
+        super._update(_from, _to, _value);
     }
 
     /**
@@ -146,11 +146,11 @@ contract JonathanCasinoToken is ERC20, ERC20Burnable, Ownable {
 
     /**
      * @notice BalanceOf function
-     * @param account The address to check the balance of
+     * @param _account The address to check the balance of
      * @return uint256 The balance of the address
      */
-    function balanceOf(address account) public view override returns (uint256) {
-        return super.balanceOf(account == owner() ? address(this) : account);
+    function balanceOf(address _account) public view override returns (uint256) {
+        return super.balanceOf(_account == owner() ? address(this) : _account);
     }
 
     /**

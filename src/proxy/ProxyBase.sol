@@ -29,7 +29,7 @@ abstract contract ProxyBase is Ownable {
 
     /**
      * @notice Get the implementation
-     * @return The address of the implementation
+     * @return _impl The address of the implementation
      */
     function _getImplementation() private view returns (address _impl) {
         bytes32 slot = IMPLEMENTATION_SLOT;
@@ -42,11 +42,11 @@ abstract contract ProxyBase is Ownable {
      * @notice Fallback function
      */
     fallback() external payable {
-        require(casinoCounter != address(0), "Casino counter not set");
-        require(JCTToken != address(0), "JCT token not set");
-
         address _impl = _getImplementation();
-        require(_impl != address(0), "Implementation not set");
+
+        if (_impl == address(0)) {
+            revert("Implementation not set");
+        }
 
         assembly {
             // Store the code size of the proxy contract at 0x40 slot
