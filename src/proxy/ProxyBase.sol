@@ -10,29 +10,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 abstract contract ProxyBase is Ownable {
     bytes32 private constant IMPLEMENTATION_SLOT = bytes32(uint256(keccak256("eip1967.proxy.implementation")) - 1);
 
-    address casinoCounter;
-    address JCTToken;
-
     /**
      * @notice Constructor of the ProxyBase contract
      */
     constructor() Ownable(msg.sender) {
-    }
-
-    /**
-     * @notice Set the casino counter
-     * @param _casinoCounter The address of the casino counter
-     */
-    function setCasinoCounter(address _casinoCounter) public onlyOwner {
-        casinoCounter = _casinoCounter;
-    }
-
-    /**
-     * @notice Set the JCT token
-     * @param _JCTToken The address of the JCT token
-     */
-    function setJCTToken(address _JCTToken) public onlyOwner {
-        JCTToken = _JCTToken;
     }
 
     /**

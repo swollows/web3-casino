@@ -48,12 +48,6 @@ contract CasinoTestNetworkTest is Test {
         casinoCounter.grantRole(casinoCounter.GAME_PROXY_ROLE(), address(coinTossProxy));
         casinoCounter.grantRole(casinoCounter.GAME_PROXY_ROLE(), address(rouletteProxy));
 
-        coinTossProxy.setCasinoCounter(address(casinoCounter));
-        coinTossProxy.setJCTToken(address(token));
-
-        rouletteProxy.setCasinoCounter(address(casinoCounter));
-        rouletteProxy.setJCTToken(address(token));
-
         coinTossGame = new CoinTossGame();
         rouletteGame = new RouletteGame();
 

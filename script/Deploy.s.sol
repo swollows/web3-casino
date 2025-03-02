@@ -25,12 +25,6 @@ contract Deploy is Script {
         casinoCounter.grantRole(casinoCounter.GAME_PROXY_ROLE(), address(coinTossProxy));
         casinoCounter.grantRole(casinoCounter.GAME_PROXY_ROLE(), address(rouletteProxy));
 
-        coinTossProxy.setCasinoCounter(address(casinoCounter));
-        coinTossProxy.setJCTToken(address(token));
-
-        rouletteProxy.setCasinoCounter(address(casinoCounter));
-        rouletteProxy.setJCTToken(address(token));
-
         CoinTossGame coinTossGame = new CoinTossGame();
         RouletteGame rouletteGame = new RouletteGame();
 
