@@ -74,6 +74,41 @@ contract CasinoGameProxyTest is Test {
         vm.stopPrank();
     }
 
+    function testRevert_invalidGameSequence() public {
+        vm.startPrank(player1);
+        token.deposit{value: 200000 * 10e3}();
+
+        vm.expectRevert();
+        // 베팅
+        ICoinTossGame(address(coinTossProxy)).placeBet(2000, false);
+
+        vm.stopPrank();
+    }
+
+    function testRevert_reEntrancy() public {
+        vm.startPrank(player1);
+        token.deposit{value: 200000 * 10e3}();
+
+        // 게임 시작
+        ICoinTossGame(address(coinTossProxy)).startGame();
+
+        // 베팅
+        ICoinTossGame(address(coinTossProxy)).placeBet(2000, false);
+
+        // 코인 토스 추첨
+        ICoinTossGame(address(coinTossProxy)).draw();
+
+        // 보상 수여
+        ICoinTossGame(address(coinTossProxy)).processRewards();
+
+        vm.expectRevert();
+
+        // 재실행
+        ICoinTossGame(address(coinTossProxy)).processRewards();
+
+        vm.stopPrank();
+    }
+
     function testCoinTossGameWin() public {
         // 충전 전 토큰 잔액 확인
         console.log("Token balance of owner:", token.balanceOf(owner));
